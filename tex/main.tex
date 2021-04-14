@@ -1,0 +1,111 @@
+%% 
+%% ACS project dissertation template. 
+%% 
+%% Currently designed for printing two-sided, but if you prefer to 
+%% print single-sided just remove ",twoside,openright" from the 
+%% \documentclass[] line below. 
+%%
+%%
+%%   SMH, May 2010. 
+
+\documentclass[a4paper,12pt]{report}
+%\documentclass[a4paper,12pt,twoside,openright]{report}
+
+
+%%
+%% EDIT THE BELOW TO CUSTOMIZE
+%%
+
+\def\authorname{Khalid Aleem\xspace}
+\def\authorcollege{Trinity College\xspace}
+\def\authoremail{ka476@cam.ac.uk}
+\def\dissertationtitle{A Risc-V based co-processor peripheral to accelerate CNN inference.}
+\def\wordcount{14,235}
+
+
+%\usepackage[dvips]{epsfig,graphics} 
+\usepackage{epsfig,graphicx,verbatim,parskip,tabularx,setspace,xspace}
+
+%% START OF DOCUMENT
+\begin{document}
+
+
+%% FRONTMATTER (TITLE PAGE, DECLARATION, ABSTRACT, ETC) 
+\pagestyle{empty}
+\singlespacing
+\input{titlepage}
+\onehalfspacing
+\input{declaration}
+\singlespacing
+\input{abstract}
+
+\pagenumbering{roman}
+\setcounter{page}{0}
+\pagestyle{plain}
+\tableofcontents
+\listoffigures
+\listoftables
+
+\onehalfspacing
+
+
+\chapter{Introduction}
+\pagenumbering{arabic} 
+\setcounter{page}{1} 
+
+% Work on Story
+% Embedded Devices
+% RiscV - ^ - 
+
+\chapter{Background} 
+% Risc-V
+% Verilator
+% Xilinx Vivado
+% Quartus Qsys
+
+
+\chapter{Related Work} 
+% BlueVec
+% Rocket RoCC
+
+% Google TPU?
+% Nvidia GPUs?!
+
+\chapter{Design and Implementation}
+% Design decisions
+
+% Test bench --- functional
+% Floating point unit (mstatus csr)
+% RV32imafc - bare metal ELF
+% Linker file, bare metal
+% Spike, proxy kernel
+% Bare Metal LibC - RiscV
+% Heap memory!
+
+% Cost of movement...
+
+% Matrix multiplication
+% Naive implementation
+% Unit duplication NAIVE
+% Unit duplication - scheduling
+% Copy cost
+
+% endianness & packing
+
+% ZipReduceUnitServer - improvements + bench
+% Unit duplication - special memory
+% 
+
+
+\chapter{Evaluation} 
+
+\chapter{Summary and Conclusions} 
+
+
+\appendix
+\singlespacing
+
+\bibliographystyle{unsrt} 
+%\bibliography{dissertation} 
+
+\end{document}
