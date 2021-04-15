@@ -8,7 +8,7 @@
 %%
 %%   SMH, May 2010. 
 
-\documentclass[a4paper,12pt]{report}
+\documentclass[a4paper,9pt]{report}
 %\documentclass[a4paper,12pt,twoside,openright]{report}
 
 
@@ -25,6 +25,14 @@
 
 %\usepackage[dvips]{epsfig,graphics} 
 \usepackage{epsfig,graphicx,verbatim,parskip,tabularx,setspace,xspace}
+
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+
+
 
 %% START OF DOCUMENT
 \begin{document}
@@ -67,7 +75,6 @@
 \chapter{Related Work} 
 % BlueVec
 % Rocket RoCC
-
 % Google TPU?
 % Nvidia GPUs?!
 
@@ -93,9 +100,170 @@
 % endianness & packing
 
 % ZipReduceUnitServer - improvements + bench
-% Unit duplication - special memory
-% 
+% Unit duplication - special memory & wire connections!
+%
 
+
+% RegFile vs Vector#(Reg#()) vs BRAM
+
+
+\section{SoC Design}
+% NOTE: image of SoC
+% CPU/AXI4 e.t.c.
+
+\subsection{AXI4 Protocol}
+% TODO: Background info/filler and origin
+\texttt{wstrb}
+% TODO: How is memory read/written from
+
+The AXI4 protocol comes with the disadvantage of being able write a maximum of 4
+bytes per clock cycle.
+% TODO: To what extent does this 
+
+\section{Fixing Piccolo}
+\subsection{Floating Point Unit}
+\subsubsection{Fixing FPU typeerrors}
+The latest commit of the Piccolo processor, (), has a type error in the floating
+point unit. 
+
+We must enter, FPU.bsv and FBox\_Core.bsv and prefix the RoundMode type with FloatingPoint::RoundMode.
+
+% NOTE: Compile log
+% compiling Piccolo/src_Core/CPU/FPU.bsv
+% Warning: Unknown position: (S0080)
+% 1 warnings were suppressed.
+% Error: "Piccolo/src_Core/CPU/FPU.bsv", line 52, column 30: (T0080)
+% Type error at the use of the following function:
+% mkFloatingPointDivider
+
+% The expected return type of the function:
+% g__#(ClientServer::Server#(Tuple3#(FPU::FSingle, FPU::FSingle, ISA_Decls::RoundMode), FPU::FpuR))
+
+% The return type according to the use:
+% c__#(ClientServer::Server#(Tuple3#(FloatingPoint::FloatingPoint#(d__, e__),
+% FloatingPoint::FloatingPoint#(d__, e__),
+% FloatingPoint::RoundMode),
+% Tuple2#(FloatingPoint::FloatingPoint#(d__, e__), FloatingPoint::Exception)))
+
+
+\subsubsection{mstatus CSR}
+Once the FPU is successfully compiled, and the processor is compiled with
+floating point support, the processor will trap when a floating point
+instruction is executed.
+
+% NOTE: Clean code
+\texttt{float a = 1.0f;} \\
+\texttt{80002276: lui a5, 0x80001}
+\texttt{8000227a: flw fa5,424(a5)}
+\texttt{8000227e: fsw fa5,-28(s0)}
+\texttt{Trap\_Info { epc: 'h8000227a, exc\_code: 'h2, tval: 'h1a87a787 }} \\
+\texttt{Trap Exc: ILLEGAL\_INSTRUCTION} \\
+
+% TODO: Citation
+This makes sense as per the Risc-V specification, Chapter 3, Section 1.11.
+The fs bit on the mstatus CSR must be set in order for floating-point
+instructions to be enabled. We can see how this is done in bare-metal C, by
+looking at the source code for the Spike Risc-V proxy kernel.
+
+% https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
+
+\subsection{Test Accelerator Control}
+When constructing an accelerator, it is important to work constructively from a minimum
+functioning unit.
+
+We make use of the test bench provided by Piccolo as a basis for our
+simulations.
+
+We create a simple peripheral, with a region of memory that we can write 4-byte
+integers into. When a special execution bit is set, we set a special accelerator
+busy bit and unset the execution bit. In a single cycle, as part of the
+accelerator, if the busy bit is set, we double the array and unset the busy bit.
+This allows the firmware to write an array into the accelerator memory, set the
+execution control bit, and stall until the busy bit is unset.
+
+% NOTE: Firmware C code for accelerator
+% NOTE: Console log
+% 0: 0
+% 1: 1
+% 2: 2
+% 3: 3
+% Set Control Bit..
+% Stalling..
+% Stall complete!
+% 0: 0
+% 1: 2
+% 2: 4
+% 3: 6
+
+\subsection{Benchmarking \& Counting cycles}
+From the Risc-V specification, we take a look at the mcycles and minstret
+registers.
+% TODO: Example + study (Evaluation)
+
+\subsection{AXI4 Alignment/Padding}
+
+This code results in the cpu trapping:
+\texttt{*((uint32\_t\*)0xC0001002) = 1337;}
+
+\texttt{Trap\_Info { epc: 'h800022d6, exc\_code: 'h6, tval: 'hc0001002 }}
+The exception/trap code corresponds to:
+TRAP EXC: STORE\_AMO\_ADDR\_MISALIGNED
+
+% TODO: Introduce the need for struct padding/packing
+This is of particular importance to consider when we issue a command to the
+accelerator. In order to ensure 
+
+\section{Matrix Reduction}
+\subsection{Overview}
+
+Mathematically, the result of a matrix multiplication may be expressed
+accordingly:
+\begin{align*}
+  C &= AB \\
+  C_{ij} &= \sum_k A_{ik}B_{kj}
+\end{align*}
+
+Matrix multiplication may be expressed in a programmatic form accordingly:
+\texttt{C[i][j] = sum zipWith (op*) (row A i) (col B j)}
+
+This can be implemented in two possible ways.
+We could approach things purely in hardware, issue a command containing the
+locations and dimensions of each of the matrices, and expect the hardware to
+write an output matrix to our memory.
+Alternatively, we may take advantage of the existence of firmware. It is
+possible that 
+
+Our peripheral contains a RegFile of internal memory which is memory mapped to
+the CPU via an AXI4 bus slave interface.
+
+\begin{tabular}{lll}
+  \toprule
+  Offset Address Range & Size & Purpose \\
+  \midrule
+  \texttt{0x0000-0x0020} & 32 Bytes & Status \\
+  \texttt{0x0020-0x0040} & 32 Bytes & Control \\
+  \texttt{0x0040-0x1000} & $\approx$ 4 KB & Memory \\
+  \bottomrule
+\end{tabular}
+
+\subsubsection{Status}
+The first byte of our status memory is to monitor, and control execution from
+the accelerator.
+We write our control command/instruction to the control memory bank. We then set out
+execute status bit, and the accelerator should run the appropriate command.
+
+\subsubsection{Control}
+
+\subsubsection{Memory}
+
+
+\subsection{Unit Design} 
+
+
+\subsection{Unit Speed-up}
+\subsection{Unit Parallelism - Naive}
+\subsection{Memory Parallelism}
+\subsection{Memory Striping}
 
 \chapter{Evaluation} 
 

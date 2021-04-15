@@ -8,9 +8,9 @@
 #include "printf.h"
 
 // Fake heap!
-#define ACCEL_STAT_ADDR mkTEST_ADDR(0)
-#define ACCEL_CMD_ADDR mkTEST_ADDR(32)
-#define ACCEL_DATA_ADDR mkTEST_ADDR(64)
+#define ACCEL_STAT_ADDR mkACCEL_ADDR(0)
+#define ACCEL_CMD_ADDR mkACCEL_ADDR(32)
+#define ACCEL_DATA_ADDR mkACCEL_ADDR(64)
 
 #define ACCEL_STAT_BUSY_BIT 0
 #define ACCEL_STAT_EXEC_BIT 1

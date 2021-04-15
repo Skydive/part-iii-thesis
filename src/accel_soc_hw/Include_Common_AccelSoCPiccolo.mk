@@ -36,15 +36,20 @@ all: compile  simulator
 
 CORE_DIRS = $(REPO)/src_Core/CPU:$(REPO)/src_Core/ISA:$(REPO)/src_Core/RegFiles:$(REPO)/src_Core/Core:$(REPO)/src_Core/Near_Mem_VM:$(REPO)/src_Core/PLIC:$(REPO)/src_Core/Near_Mem_IO:$(REPO)/src_Core/Debug_Module:$(REPO)/src_Core/BSV_Additional_Libs
 
-TESTBENCH_PATH = src_bsv
-TESTBENCH_DIRS = $(TESTBENCH_PATH)/Top:$(TESTBENCH_PATH)/SoC:$(TESTBENCH_PATH)/Fabrics/AXI4:src_bsv_units/MultiplyArrayAccTest
+#TESTBENCH_PATH = $(REPO)/src_Testbench
+TESTBENCH_PATH = src_Testbench
+TESTBENCH_DIRS = $(TESTBENCH_PATH)/Top:$(TESTBENCH_PATH)/SoC:$(TESTBENCH_PATH)/Fabrics/AXI4
+
+#TESTBENCH_DIRS := src_bsv_units/MultiplyArrayAccTest:$(TESTBENCH_DIRS)
+#TESTBENCH_DIRS := src_accel:src_bsv_units/MultiplyArrayAccTest:$(TESTBENCH_DIRS)
 
 BSC_PATH = $(CUSTOM_DIRS):$(CORE_DIRS):$(TESTBENCH_DIRS):+
 
 # ----------------
 # Top-level file and module
 
-TOPFILE   ?= $(REPO)/src_Testbench/Top/Top_HW_Side.bsv
+#TOPFILE   ?= $(REPO)/src_Testbench/Top/Top_HW_Side.bsv
+TOPFILE ?= $(TESTBENCH_PATH)/Top/Top_HW_Side.bsv
 TOPMODULE ?= mkTop_HW_Side
 
 # ================================================================

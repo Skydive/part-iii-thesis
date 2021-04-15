@@ -1,6 +1,25 @@
-\contentsline {chapter}{\numberline {1}Title}{1}{}%
-\contentsline {chapter}{\numberline {2}Title}{2}{}%
-\contentsline {chapter}{\numberline {3}Title}{3}{}%
-\contentsline {chapter}{\numberline {4}Title}{4}{}%
-\contentsline {chapter}{\numberline {5}Title}{5}{}%
-\contentsline {chapter}{\numberline {6}Title}{6}{}%
+\contentsline {chapter}{\numberline {1}Introduction}{1}{}%
+\contentsline {chapter}{\numberline {2}Background}{2}{}%
+\contentsline {chapter}{\numberline {3}Related Work}{3}{}%
+\contentsline {chapter}{\numberline {4}Design and Implementation}{4}{}%
+\contentsline {section}{\numberline {4.1}SoC Design}{4}{}%
+\contentsline {subsection}{\numberline {4.1.1}AXI4 Protocol}{4}{}%
+\contentsline {section}{\numberline {4.2}Fixing Piccolo}{4}{}%
+\contentsline {subsection}{\numberline {4.2.1}Floating Point Unit}{4}{}%
+\contentsline {subsubsection}{Fixing FPU typeerrors}{4}{}%
+\contentsline {subsubsection}{mstatus CSR}{4}{}%
+\contentsline {subsection}{\numberline {4.2.2}Test Accelerator Control}{5}{}%
+\contentsline {subsubsection}{AXI4 Fabric}{5}{}%
+\contentsline {subsection}{\numberline {4.2.3}Fabric Failure}{5}{}%
+\contentsline {section}{\numberline {4.3}Matrix Reduction}{5}{}%
+\contentsline {subsection}{\numberline {4.3.1}Overview}{5}{}%
+\contentsline {subsubsection}{Status}{6}{}%
+\contentsline {subsubsection}{Control}{6}{}%
+\contentsline {subsubsection}{Memory}{6}{}%
+\contentsline {subsection}{\numberline {4.3.2}Unit Design}{6}{}%
+\contentsline {subsection}{\numberline {4.3.3}Unit Speed-up}{6}{}%
+\contentsline {subsection}{\numberline {4.3.4}Unit Parallelism - Naive}{6}{}%
+\contentsline {subsection}{\numberline {4.3.5}Memory Parallelism}{6}{}%
+\contentsline {subsection}{\numberline {4.3.6}Memory Striping}{6}{}%
+\contentsline {chapter}{\numberline {5}Evaluation}{7}{}%
+\contentsline {chapter}{\numberline {6}Summary and Conclusions}{8}{}%

@@ -2,21 +2,25 @@
  "main"
  (lambda ()
    (TeX-add-to-alist 'LaTeX-provided-class-options
-                     '(("report" "a4paper" "12pt")))
+                     '(("report" "a4paper" "9pt")))
    (TeX-run-style-hooks
     "latex2e"
     "titlepage"
     "declaration"
     "abstract"
     "report"
-    "rep12"
+    "rep10"
     "epsfig"
     "graphicx"
     "verbatim"
     "parskip"
     "tabularx"
     "setspace"
-    "xspace")
+    "xspace"
+    "booktabs"
+    "amsmath"
+    "amssymb"
+    "tikz")
    (TeX-add-symbols
     "authorname"
     "authorcollege"
