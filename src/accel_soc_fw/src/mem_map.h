@@ -1,6 +1,6 @@
 #pragma once
 
-#define ACCEL_ADDR_BASE 0xC0001000UL
+#define ACCEL_ADDR_BASE 0xC0002000UL
 #define ACCEL_ADDR_STRIDE 4
 #define mkACCEL_ADDR(offset) (ACCEL_ADDR_BASE + ACCEL_ADDR_STRIDE*offset)
 

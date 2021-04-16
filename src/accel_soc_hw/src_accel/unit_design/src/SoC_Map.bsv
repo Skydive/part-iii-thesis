@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2020 Bluespec, Inc. All Rights Reserved
+// Copyright (c) 2013-2019 Bluespec, Inc. All Rights Reserved
 
 package SoC_Map;
 
@@ -36,6 +36,7 @@ export  boot_rom_slave_num;
 export  mem0_controller_slave_num;
 export  uart0_slave_num;
 export  test_slave_num;
+export  accel_slave_num;
 export  accel0_slave_num;
 
 export  N_External_Interrupt_Sources;
@@ -72,7 +73,12 @@ interface SoC_Map_IFC;
    (* always_ready *)   method  Fabric_Addr  m_test_addr_base;
    (* always_ready *)   method  Fabric_Addr  m_test_addr_size;
    (* always_ready *)   method  Fabric_Addr  m_test_addr_lim;
-
+ 
+   (* always_ready *)   method  Fabric_Addr  m_accel_addr_base;
+   (* always_ready *)   method  Fabric_Addr  m_accel_addr_size;
+   (* always_ready *)   method  Fabric_Addr  m_accel_addr_lim;
+   
+   
 `ifdef INCLUDE_ACCEL0
    (* always_ready *)   method  Fabric_Addr  m_accel0_addr_base;
    (* always_ready *)   method  Fabric_Addr  m_accel0_addr_size;
@@ -145,12 +151,22 @@ module mkSoC_Map (SoC_Map_IFC);
       return ((uart0_addr_base <= addr) && (addr < uart0_addr_lim));
    endfunction
    
+   
    Fabric_Addr test_addr_base = 'hC000_1000;
-   Fabric_Addr test_addr_size = 'h0001_0000;    // 64K
+   Fabric_Addr test_addr_size = 'h0000_1000;    // 128
    Fabric_Addr test_addr_lim  = test_addr_base + test_addr_size;
 
    function Bool fn_is_test_addr (Fabric_Addr addr);
-   return ((test_addr_base <= addr) && (addr < test_addr_lim));
+      return ((test_addr_base <= addr) && (addr < test_addr_lim));
+   endfunction
+   
+   
+   Fabric_Addr accel_addr_base = 'hC000_2000;
+   Fabric_Addr accel_addr_size = 'h0000_1000;    // 4K
+   Fabric_Addr accel_addr_lim  = accel_addr_base + accel_addr_size;
+
+   function Bool fn_is_accel_addr (Fabric_Addr addr);
+   return ((accel_addr_base <= addr) && (addr < accel_addr_lim));
    endfunction
 
    // ----------------------------------------------------------------
@@ -231,7 +247,8 @@ module mkSoC_Map (SoC_Map_IFC);
       return (   fn_is_near_mem_io_addr (addr)
 	      || fn_is_plic_addr (addr)
 	      || fn_is_uart0_addr  (addr)
-        || fn_is_test_addr  (addr)
+        || fn_is_test_addr (addr)
+        || fn_is_accel_addr (addr)
 `ifdef INCLUDE_ACCEL0
 	      || fn_is_accel0_addr  (addr)
 `endif
@@ -265,7 +282,12 @@ module mkSoC_Map (SoC_Map_IFC);
    method  Fabric_Addr  m_test_addr_base = test_addr_base;
    method  Fabric_Addr  m_test_addr_size = test_addr_size;
    method  Fabric_Addr  m_test_addr_lim  = test_addr_lim;
-
+   
+   
+   method  Fabric_Addr  m_accel_addr_base = accel_addr_base;
+   method  Fabric_Addr  m_accel_addr_size = accel_addr_size;
+   method  Fabric_Addr  m_accel_addr_lim  = accel_addr_lim;
+   
 `ifdef INCLUDE_ACCEL0
    method  Fabric_Addr  m_accel0_addr_base = accel0_addr_base;
    method  Fabric_Addr  m_accel0_addr_size = accel0_addr_size;
@@ -319,11 +341,11 @@ typedef 2 Num_Masters;
 
 `ifdef INCLUDE_ACCEL0
 
-typedef 5 Num_Slaves;
+typedef 6 Num_Slaves;
 
 `else
 
-typedef 4 Num_Slaves;
+typedef 5 Num_Slaves;
 
 `endif
 
@@ -332,7 +354,8 @@ Integer boot_rom_slave_num        = 0;
 Integer mem0_controller_slave_num = 1;
 Integer uart0_slave_num           = 2;
 Integer test_slave_num           = 3;
-Integer accel0_slave_num          = 4;
+Integer accel_slave_num           = 4;
+Integer accel0_slave_num          = 3;
 
 // ================================================================
 // Interrupt request numbers (== index in to vector of

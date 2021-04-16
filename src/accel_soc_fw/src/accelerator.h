@@ -75,7 +75,7 @@ void accel_exec_command() {
 
 
 void accel_load_command(struct MatUnitArgs args) {
-  printf("Fuck: %d\n", sizeof(struct MatUnitArgs));
+  /* printf("Size: %d\n", sizeof(struct MatUnitArgs)); */
   memcpy((void*)ACCEL_CMD_ADDR, &args, sizeof(struct MatUnitArgs));
 }
 
