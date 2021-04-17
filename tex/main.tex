@@ -195,10 +195,6 @@ execution control bit, and stall until the busy bit is unset.
 % 2: 4
 % 3: 6
 
-\subsection{Benchmarking \& Counting cycles}
-From the Risc-V specification, we take a look at the mcycles and minstret
-registers.
-% TODO: Example + study (Evaluation)
 
 \subsection{AXI4 Alignment/Padding}
 
@@ -262,19 +258,80 @@ BSV contains a FloatingPoint library, which extends the Server module.
 We can put a request, and after some number of clock cycles, get a response.
 
 % Unit Design
-% Unit: Speedup - pre-exec
-% Unit: Speedup - tree addition
+% Unit: Simple: Pipelined Multiply + Sequential Add
+% Unit: FusedMultiplyAccumulate
+% Unit: Speedup - Tree addition (pipelined addition)
+
+
 % Unit: Memory Parallelism
+% Unit: Memory Banking:
+% https://tomverbeure.github.io/2019/08/03/Multiport-Memories.html  
 
 \subsection{Unit Speed-up}
 \subsection{Unit Parallelism - Naive}
-\subsection{Memory Parallelism}
-\subsection{Memory Striping}
 
-\subsection{Neural Network Speedup}
+% TODO: Jesus...
+\subsection{Memory Parallelism}
+
+% What is a Regfile, What is BlockRam? What is SRAM?
+We observe that a RegFile, has a maximum of 5 read ports, and 1 write port.
+Typically, BRAM, has 2 read ports, and 1 write port.
+
+% Error: "MultiPortBRAM.bsv", line 18, column 37: (G0002)
+% `pmem_mem_0.sub' needs more than 5 ports for the following uses:
+% `pmem_mem_0.sub a__h30554' at "MultiPortBRAM.bsv", line 18, column 37
+% `pmem_mem_0.sub a__h31995' at "MultiPortBRAM.bsv", line 18, column 37
+% `pmem_mem_0.sub a__h32028' at "MultiPortBRAM.bsv", line 18, column 37
+% `pmem_mem_0.sub a__h32061' at "MultiPortBRAM.bsv", line 18, column 37
+% `pmem_mem_0.sub a__h32094' at "MultiPortBRAM.bsv", line 18, column 37
+% `pmem_mem_0.sub a__h32127' at "MultiPortBRAM.bsv", line 18, column 37
+
+\subsection{Memory Striping/Banking}
 
 
 \chapter{Evaluation} 
+\section{Methodology}
+
+\subsection{Fused Multiply Accumulate}
+% Cannot exploit pipelined nature of unit.
+% Faster than individual FP multiply, then add. 10 cycles vs 14 cycles.
+
+%  10: FSM Start
+%  20: Init
+%  40: PUT: 00000000 40800000 40800000
+%  40: STATE_LOCK
+% 140: 0: MulAcc Result: 41800000
+% 140: STATE_READY
+% 150: PUT: 41800000 40800000 40800000
+% 150: STATE_LOCK
+% 250: 1: MulAcc Result: 42000000
+% 250: STATE_READY
+% 260: PUT: 42000000 40800000 40800000
+% 260: STATE_LOCK
+% 360: 2: MulAcc Result: 42400000
+% 360: STATE_READY
+% 370: PUT: 42400000 40800000 40800000
+% 370: STATE_LOCK
+% 470: 3: MulAcc Result: 42800000
+% 470: STATE_COMPLETE
+% 480: Output: 42800000
+
+\begin{align*}
+  T_{Naive}(N) &= 11+N + 4N \\
+  &= 15 + 5N \\
+  T_{FMA}(N) &= (10+1)N \\
+             &= 11N \\
+  T_{TADD}(N) &= max(10+N, 11+2\frac{N}{2} + \frac{N}{4} + ... + 16) \\
+             &= 2N+27 
+\end{align*}
+
+
+\subsection{Benchmarking \& Counting cycles}
+From the Risc-V specification, we take a look at the mcycles and minstret
+registers.
+% TODO: Example + study (Evaluation)
+
+\subsection{MNIST Neural Network: Dense Layers}
 
 \chapter{Summary and Conclusions} 
 

@@ -37,31 +37,32 @@ typedef enum {
 
 (* synthesize *)
 module mkMain(Empty);
-   Integer alloc_size = 4;
-   Integer numServers = 4;
+   Integer alloc_size = 48;
+   //RegFile #(Bit #(32), FSingle) mem <- mkRegFile(0, fromInteger(alloc_size)-1);
    RegFile #(Bit #(32), FSingle) mem <- mkRegFileLoad ("array1.hex", 0, fromInteger(alloc_size) - 1);
 
    Server#(MRequestUT, FSingle) marr <- mkZipReduceServer;
 
-   let ptr_a = MatUnitPtr{addr: 0, offset: 0, stride: 1, count: 2};
-   let ptr_b = MatUnitPtr{addr: 4, offset: 0, stride: 2, count: 2};
-   let ptr_c = MatUnitPtr{addr: 8, offset: 0, stride: 1, count: 1};
+   let ptr_a = MatUnitPtr{addr: 0, offset: 0, stride: 1, count: 24};
+   let ptr_b = MatUnitPtr{addr: 24, offset: 0, stride: 1, count: 24};
    
    Reg#(UInt#(8)) i <- mkReg(0);
 
+   function Bit#(32) get_mem_addr(MatUnitPtr ptr, UInt#(16) k);
+      return pack(ptr.addr) + extend(pack(ptr.offset)) + extend(pack(ptr.stride)) * extend(pack(k));
+   endfunction
+   
    FSM load_data <- mkFSM(seq
+      action
+         marr.request.put(Init(extend(ptr_a.count)));
+      endaction
       for(i<=0; i < ptr_a.count; i<=i+1) seq
          action
-            let a = mem.sub(extend(pack(i)));
+            let a = mem.sub(get_mem_addr(ptr_a, extend(i)));
             let b = mem.sub(fromInteger(alloc_size/2) + extend(pack(i)));
             marr.request.put(ReqOp(tuple2(a, b)));
-            $display("%3d: Put: %h %h", $time, a, b);
          endaction
       endseq
-      action
-         marr.request.put(Execute);
-         $display("%3d: Execute", $time);
-      endaction
    endseq);
 
    Reg#(bit) b <- mkReg(0);
