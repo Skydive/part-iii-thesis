@@ -53,8 +53,8 @@ import PLIC     :: *;    // For interface to PLIC interrupt sources, in Core_IFC
 import Boot_ROM       :: *;
 import Mem_Controller :: *;
 import UART_Model     :: *;
-
-import Accel_Model     :: *;
+import Test_Model     :: *;
+import Accel_Model    :: *;
 
 `ifdef INCLUDE_CAMERA_MODEL
 import Camera_Model   :: *;
@@ -153,10 +153,9 @@ module mkSoC_Top (SoC_Top_IFC);
 
    // SoC IPs
    UART_IFC   uart0  <- mkUART;
-
-   Accel_IFC test <- mkAccel;
-
-
+   Test_IFC   test <- mkTest;
+   Accel_IFC  accel <- mkAccel;
+   
 `ifdef INCLUDE_ACCEL0
    // Accel0 master to fabric
    AXI4_Accel_IFC  accel0 <- mkAXI4_Accel;
@@ -192,6 +191,7 @@ module mkSoC_Top (SoC_Top_IFC);
    // Fabric to UART0
    mkConnection (fabric.v_to_slaves [uart0_slave_num],  uart0.slave);
    mkConnection (fabric.v_to_slaves [test_slave_num],  test.slave);
+   mkConnection (fabric.v_to_slaves [accel_slave_num],  accel.slave);
 
 `ifdef INCLUDE_ACCEL0
    // Fabric to accel0
@@ -262,6 +262,8 @@ module mkSoC_Top (SoC_Top_IFC);
 	 mem0_controller.server_reset.request.put (?);
 	 uart0.server_reset.request.put (?);
 	 test.server_reset.request.put (?);
+	 accel.server_reset.request.put (?);
+         
 	 fabric.reset;
       endaction
    endfunction
@@ -271,6 +273,8 @@ module mkSoC_Top (SoC_Top_IFC);
 	 let cpu_rsp             <- core.cpu_reset_server.response.get;
 	 let mem0_controller_rsp <- mem0_controller.server_reset.response.get;
 	 let uart0_rsp           <- uart0.server_reset.response.get;
+	 let test_rsp           <- test.server_reset.response.get;
+	 let accel_rsp           <- accel.server_reset.response.get;
 
 	 // Initialize address maps of slave IPs
 	 boot_rom.set_addr_map (soc_map.m_boot_rom_addr_base,
@@ -280,8 +284,9 @@ module mkSoC_Top (SoC_Top_IFC);
 				       soc_map.m_mem0_controller_addr_lim);
 
 	 uart0.set_addr_map (soc_map.m_uart0_addr_base, soc_map.m_uart0_addr_lim);
+	 test.set_addr_map (soc_map.m_test_addr_base, soc_map.m_test_addr_lim);
+	 accel.set_addr_map (soc_map.m_accel_addr_base, soc_map.m_accel_addr_lim);
 
-   test.set_addr_map (soc_map.m_test_addr_base, soc_map.m_test_addr_lim);
 `ifdef INCLUDE_ACCEL0
 	 accel0.init (fabric_default_id,
 		      soc_map.m_accel0_addr_base,
@@ -299,9 +304,12 @@ module mkSoC_Top (SoC_Top_IFC);
 	    $display ("  UART0:           0x%0h .. 0x%0h",
 		      soc_map.m_uart0_addr_base,
 		      soc_map.m_uart0_addr_lim);
-	    $display ("  test:           0x%0h .. 0x%0h",
+	    $display ("  TEST:           0x%0h .. 0x%0h",
 		     soc_map.m_test_addr_base,
 		     soc_map.m_test_addr_lim);
+	    $display ("  Accel:           0x%0h .. 0x%0h",
+		            soc_map.m_accel_addr_base,
+		            soc_map.m_accel_addr_lim);
 	 end
       endaction
    endfunction
@@ -436,9 +444,9 @@ module mkSoC_Top (SoC_Top_IFC);
    endmethod
 
    // For ISA tests: watch memory writes to <tohost> addr
-//    method Action set_watch_tohost (Bool  watch_tohost, Fabric_Addr  tohost_addr);
-//       mem0_controller.set_watch_tohost (watch_tohost, tohost_addr);
-//    endmethod
+   method Action set_watch_tohost (Bool  watch_tohost, Fabric_Addr  tohost_addr);
+      mem0_controller.set_watch_tohost (watch_tohost, tohost_addr);
+   endmethod
 endmodule: mkSoC_Top
 
 // ================================================================

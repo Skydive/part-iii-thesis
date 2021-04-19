@@ -32,7 +32,12 @@ import AXI4_Types  :: *;
 
 import FloatingPoint :: *;
 typedef FloatingPoint#(8,23) FSingle;
+
+import MultiPortBRAM :: *;
 import ZipReduceServer :: *;
+
+import Endianness :: *;
+
 
 // 256 bits control register
 Bit #(16) addr_TEST_control = 0;
@@ -69,37 +74,23 @@ Integer address_stride = 4;
 // ACCEL INTERNALS
 
 typedef struct {
-                Bit#(32) addr;
-                Bit#(8) offset;
-                Bit#(8) stride;
+   LittleEndian#(Bit#(32)) addr;
+   LittleEndian#(Bit#(8)) offset;
+   LittleEndian#(Bit#(8)) stride;
    } MatUnitPtr deriving (Eq, Bits, FShow);
 
 typedef struct {
-                Bit#(16) count;
-                MatUnitPtr ptr_a;
-                MatUnitPtr ptr_b;
-                MatUnitPtr ptr_c;
-   } MatUnitArgs deriving (Eq, Bits, FShow);
+   LittleEndian#(Bit#(8)) unit;
+   LittleEndian#(Bit#(8)) count;
+   MatUnitPtr ptr_a;
+   MatUnitPtr ptr_b;
+   MatUnitPtr ptr_c;
+} MatUnitArgs deriving (Eq, Bits, FShow);
 
 typedef enum {
               STATUS_LOAD,
               STATUS_OK
    } MatUnitStatus deriving (Eq, Bits);
-
-function Bit#(n) endianSwap(Bit#(n) i) provisos (Mul#(nbytes,8,n),Div#(n,8,nbytes),Log#(nbytes,k));
-   Vector#(nbytes,Bit#(8)) t = toChunks(i);
-   return pack(reverse(t));
-endfunction
-
-
-// function MatUnitArgs MatUnitArgs_endianSwap(MatUnitArgs x);
-//    MatUnitArgs out = unpack(pack(x));
-//    out.count = endianSwap(x.count);
-//    out.ptr_a.addr = endianSwap(x.ptr_a.addr);
-//    out.ptr_b.addr = endianSwap(x.ptr_b.addr);
-//    out.ptr_c.addr = endianSwap(x.ptr_c.addr);
-//    return out;
-// endfunction
 
 
 // ----------------------------------------------------------------
@@ -154,9 +145,10 @@ module mkAccel(Accel_IFC);
    Integer verbosity = 0;
    Reg #(Module_State) rg_state <- mkReg(STATE_START);
 
-   Vector #(32,  Reg #(Bit #(8))) rgv_control <- replicateM(mkReg(0));
+   Vector #(32,  Reg #(Bit #(8))) rgv_control <- replicateM(mkConfigReg(0));
    Vector #(32,  Reg #(Bit #(8))) rgv_command <- replicateM(mkReg(0));
-   Vector #(256, Reg #(Bit #(8))) rgv_data <- replicateM(mkReg(0));
+   //Vector #(256, Reg #(Bit #(8))) rgv_data <- replicateM(mkReg(0));
+   MultiPortBRAM#(Bit#(16), FSingle, 5) rgv_data <- mkMultiPortBRAM;
 
    // These regs represent where this UART is placed in the address space.
    Reg #(Fabric_Addr)  rg_addr_base <- mkRegU;
@@ -192,18 +184,18 @@ module mkAccel(Accel_IFC);
 
       let byte_addr = rda.araddr - rg_addr_base;
       match { .offset, .lsbs } = split_addr (zeroExtend (byte_addr));
-
+      
       Fabric_Data rdata = 0;
       AXI4_Resp rresp      = axi4_resp_okay;
 
       if ((rda.araddr < rg_addr_base) || (rda.araddr >= rg_addr_lim)) begin
-	       $display ("%0d: %m.rl_process_rd_req: ERROR: TEST addr out of bounds", cur_cycle);
+	       $display ("%0d: %m.rl_process_rd_req: ERROR: ACCEL addr out of bounds", cur_cycle);
 	       $display ("    UART base addr 0x%0h  limit addr 0x%0h", rg_addr_base, rg_addr_lim);
 	       $display ("    AXI4 request: ", fshow (rda));
 	       rresp = axi4_resp_decerr;
       end
       else if (lsbs != 0) begin
-	       $display ("%0d: %m.rl_process_rd_req: ERROR: TEST misaligned addr", cur_cycle);
+	       $display ("%0d: %m.rl_process_rd_req: ERROR: ACCEL misaligned addr", cur_cycle);
 	       $display ("    ", fshow (rda));
 	       rresp = axi4_resp_slverr;
       end
@@ -220,13 +212,19 @@ module mkAccel(Accel_IFC);
          // $display("READ CMD BASE ADDR: %h", rg_addr_command);
       end
       else if (byte_addr >= zeroExtend(addr_TEST_data)) begin
-      // offset 1: DAT
-         let rgv_idx = (rda.araddr - rg_addr_data);
-         let rgv = rgv_data;
-         rdata = zeroExtend({rgv[rgv_idx+3], rgv[rgv_idx+2], rgv[rgv_idx+1], rgv[rgv_idx]});
+         if (byte_addr[1:0] != 0) begin
+         	  $display ("%0d: %m.rl_process_rd_req: ERROR: ACCEL misaligned addr", cur_cycle);
+	          $display ("    ", fshow (rda));
+	          rresp = axi4_resp_slverr;
+         end
+         else begin
+            let rgv_idx = truncate((rda.araddr - rg_addr_data) >> 2);
+            FSingle fdata <- rgv_data.sub(0, rgv_idx);
+            rdata = zeroExtend(pack(fdata));
+         end
       end
       else begin
-	       $display ("%0d: %m.rl_process_rd_req: ERROR: TEST unsupported addr", cur_cycle);
+	       $display ("%0d: %m.rl_process_rd_req: ERROR: ACCEL unsupported addr", cur_cycle);
 	       $display ("    ", fshow (rda));
 	       rresp = axi4_resp_decerr;
       end
@@ -235,6 +233,8 @@ module mkAccel(Accel_IFC);
 
       if ((valueOf (Wd_Data) == 64) && (byte_addr [2:0] == 3'b100))
 	       rdata = rdata << 32;
+
+      // $display("READ ACCEL: %h -> %h", byte_addr, rdata);
 
       let rdr = AXI4_Rd_Data {rid:   rda.arid,
 			                        rdata: rdata,
@@ -251,6 +251,9 @@ module mkAccel(Accel_IFC);
       Bit #(64) wdata     = zeroExtend (wrd.wdata);
       Bit #(8)  wstrb     = zeroExtend (wrd.wstrb);
       Bit #(8)  data_byte = truncate (fn_extract_AXI4_data (wdata, wstrb));
+      
+      // $display("DEBUG WRITE!: wdata: ", fshow(wdata));
+      // $display("DEBUG WRITE!: wstrb: ", fshow(wstrb));
 
       let byte_addr = wra.awaddr - rg_addr_base;
       match { .offset, .lsbs } = split_addr (zeroExtend (byte_addr));
@@ -259,13 +262,13 @@ module mkAccel(Accel_IFC);
       AXI4_Resp bresp      = axi4_resp_okay;
 
       if ((wra.awaddr < rg_addr_base) || (wra.awaddr >= rg_addr_lim)) begin
-	       $display ("%0d: %m.rl_process_wr_req: ERROR: TEST addr out of bounds", cur_cycle);
+	       $display ("%0d: %m.rl_process_wr_req: ERROR: ACCEL addr out of bounds", cur_cycle);
 	       $display ("    UART base addr 0x%0h  limit addr 0x%0h", rg_addr_base, rg_addr_lim);
 	       $display ("    AXI4 request: ", fshow (wra));
 	       bresp = axi4_resp_decerr;
       end
       else if (lsbs != 0) begin
-	       $display ("%0d: %m.rl_process_wr_req: ERROR: TEST misaligned addr", cur_cycle);
+	       $display ("%0d: %m.rl_process_wr_req: ERROR: ACCEL misaligned addr", cur_cycle);
 	       $display ("    ", fshow (wra));
 	       bresp = axi4_resp_slverr;
       end
@@ -292,17 +295,29 @@ module mkAccel(Accel_IFC);
       end
       else begin
       // offset 1: DATA
-         let rgv_idx = (wra.awaddr - rg_addr_data);
          if((valueOf (Wd_Data) == 64) && byte_addr[2:0] == 3'b100) begin
             wdata = wdata >> 32;
             wstrb = wstrb >> 4;
          end
-         //$display("DEBUG WRITE!: wdata: ", fshow(wdata));
-         //$display("DEBUG WRITE!: wstrb: ", fshow(wstrb));
-         for(Integer i=0; i<4; i=i+1)
-            if(wstrb[i] != 0)
-               rgv_data[rgv_idx+fromInteger(i)] <= wdata[8*i+7:8*i];
+         if(wstrb != 8'hFF && wstrb != 8'h0F) begin
+         	  $display ("%0d: %m.rl_process_wr_req: ERROR: ACCEL bad strobe", cur_cycle);
+	          $display ("    ", fshow (wra));
+	          $display ("    ", fshow (wrd));
+	          bresp = axi4_resp_slverr;
+         end
+         else if (byte_addr[1:0] != 0) begin
+            $display ("%0d: %m.rl_process_wr_req: ERROR: ACCEL misaligned float addr", cur_cycle);
+	          $display ("    ", fshow (wra));
+	          bresp = axi4_resp_slverr;
+         end
+         else begin
+            // TODO: Stall if internal write!?
+            // TODO: Or fake software backpressure!?
+            let rgv_idx = truncate((wra.awaddr - rg_addr_data) >> 2);
+            rgv_data.upd(rgv_idx, unpack(truncate(wdata)));
+         end
       end
+      
       // else begin
 	    //    $display ("%0d: %m.rl_process_wr_req: ERROR: TEST unsupported addr", cur_cycle);
 	    //    $display ("    ", fshow (wra));
@@ -317,43 +332,25 @@ module mkAccel(Accel_IFC);
       slave_xactor.i_wr_resp.enq (wrr);
    endrule
    
-   // rule rl_perform_accel (rg_state == STATE_READY && rg_control[0] == 1);
-   //    for(Integer i=0; i<64; i=i+1) begin
-   //       Bit #(32) data = {rgv_data[4*i+3], rgv_data[4*i+2], rgv_data[4*i+1], rgv_data[4*i]};
-   //       data = data*2;
-   //       for(Integer j=0; j<4; j=j+1) begin
-   //          rgv_data[4*i+j] <= data[8*j+7:8*j];
-   //          //$display("WRITTEN: ", 4*i+j);
-   //       end
-   //    end
-   //    rg_control <= {rg_control[7:2], 'b10};
-   // endrule
-
-      
    
-   
-   // Accelerator stuff!?
+   // Some stupid stuff
    function Bool control_is_exec();
       return unpack(rgv_control[0][0]);
    endfunction
    function Bool control_is_busy();
       return unpack(rgv_control[0][1]);
    endfunction
+
+   FIFOF#(MatUnitArgs) cmd_buf <- mkBypassFIFOF;
+   Vector#(4,Server#(MRequestUT, FSingle)) servers <- replicateM(mkZipReduceServer);
+   Vector#(4, Reg#(MatUnitArgs)) server_cmd <- replicateM(mkReg(unpack(0)));
+   Vector#(4, Reg#(Bool)) server_busy <- replicateM(mkReg(False));
+   Vector#(4, Reg#(Bit#(8))) server_count <- replicateM(mkReg(0));
+   Vector#(4, Reg#(Bool)) server_done <- replicateM(mkReg(False));
+   Vector#(4, Reg#(FSingle)) server_result <- replicateM(mkReg(0));
+
+   // TODO: somehow make use of Connectables!?
    
-   // TODO: Decoder combinatorial logic...
-
-   FIFOF#(Tuple2#(Bit#(16), MatUnitArgs)) cmd_buf <- mkFIFOF;
-   Integer numServers = 3;
-   Vector#(3,Vector#(128, Reg#(FSingle))) server_mem_a <- replicateM(replicateM(mkReg(0)));
-   Vector#(3,Vector#(128, Reg#(FSingle))) server_mem_b <- replicateM(replicateM(mkReg(0)));
-
-   Vector#(3,ConfigReg#(Bit#(8))) server_state <- replicateM(mkConfigReg(0));
-   Vector#(3,Reg#(Bit#(16))) server_cnt <- replicateM(mkReg(0));
-   Vector#(3,Reg#(Bit#(16))) server_len <- replicateM(mkReg(0));
-   Vector#(3,Reg#(Bit#(32))) server_out_addr <- replicateM(mkReg(0));
-   Vector#(3,Reg#(FSingle)) server_result <- replicateM(mkReg(0));
-   Vector#(3,Server#(MRequestUT, FSingle)) servers <- replicateM(mkZipReduceServer);
-
    rule rl_decode_command (rg_state == STATE_READY && control_is_exec() && !control_is_busy());
       rgv_control[0][1:0] <= 2'b10;
       Bit#(160) command = 0;
@@ -363,113 +360,75 @@ module mkAccel(Accel_IFC);
       command = pack(reverse(cmd_vec)); // Swap byte order
       // TODO: Decode single command
       MatUnitArgs args = unpack(truncate(command)); // Reverse endian-ness
-      args.count = endianSwap(args.count);
-      args.ptr_a.addr = endianSwap(args.ptr_a.addr);
-      args.ptr_b.addr = endianSwap(args.ptr_b.addr);
-      args.ptr_c.addr = endianSwap(args.ptr_c.addr);
-      $display("ENQ command: ", fshow(args));
+      $display("ENQ command: ", fshow(unpackle(args.ptr_a.addr)));
       $display("COMMAND: %h", pack(args));
-      cmd_buf.enq(tuple2(0, args));
+      cmd_buf.enq(args);
    endrule
-   
-   // TODO: issue command
-   // TODO: unset busy on issue
-   
-   Reg#(Bit#(16)) write_server <- mkReg(0);
-   Reg#(Bit#(4)) copy_state <- mkReg(0);
-   Reg#(Bit#(16)) copy_cnt <- mkReg(0);
-   Reg#(Bit#(16)) copy_len <- mkReg(0);
 
-   
-      // Populate servers...
-   // TODO: Check if server BUSY
-   rule rl_copy_start (cmd_buf.notEmpty() && copy_state == 0);
-      let x = cmd_buf.first();
-      match { .id, .args } = x;
-      copy_len <= args.count;
-      copy_cnt <= 0;
-      write_server <= id;
-      copy_state <= 1;
-      $display("Copy Start: ", id);
-   endrule
-   rule rl_copy (cmd_buf.notEmpty() && server_state[write_server] == 0 && copy_state == 1 && copy_cnt < copy_len);
-      match { .id, .args } = cmd_buf.first();
-      let read_addr_a = args.ptr_a.addr + 4*extend(args.ptr_a.offset) + 4*extend(args.ptr_a.stride) * extend(copy_cnt) - truncate(pack(rg_addr_data));
-      let read_addr_b = args.ptr_b.addr + 4*extend(args.ptr_b.offset) + 4*extend(args.ptr_b.stride) * extend(copy_cnt) - truncate(pack(rg_addr_data));
-      
-      $display("read_addr_a: %h", read_addr_a);
-      $display("read_addr_b: %h", read_addr_b);
-      Bit#(32) a = 0;
-      Bit#(32) b = 0;
-      for(Integer i=0; i<4; i=i+1) begin
-         a[i*8+7:i*8] = rgv_data[read_addr_a+fromInteger(i)];
-         b[i*8+7:i*8] = rgv_data[read_addr_b+fromInteger(i)];
+   rule rl_exec_command (cmd_buf.notEmpty());
+      MatUnitArgs args = cmd_buf.first;
+      let unit_id = unpackle(args.unit);
+      let count = unpackle(args.count);
+      if(server_busy[unit_id] == False) begin
+         cmd_buf.deq;
+         server_busy[unit_id] <= True;
+         server_cmd[unit_id] <= args;
+         server_count[unit_id] <= 0;
+         servers[unit_id].request.put(tagged Init unpack(extend(count)));
+         rgv_control[0][1:0] <= 2'b00;
       end
-      
-      server_mem_a[write_server][copy_cnt] <= unpack(a);
-      server_mem_b[write_server][copy_cnt] <= unpack(b);
-      copy_cnt <= copy_cnt + 1;
-   endrule
-   rule rl_copy_stop (cmd_buf.notEmpty() && server_state[write_server] == 0 && copy_state == 1 && copy_cnt == copy_len);
-      match { .id, .args } = cmd_buf.first();
-      cmd_buf.deq();
-      let len = args.count;
-      
-      server_state[write_server] <= 1;
-      server_len[write_server] <= len;
-      server_cnt[write_server] <= 0;
-      server_out_addr[write_server] <= args.ptr_c.addr - truncate(pack(rg_addr_data));
-      
-      copy_len <= 0;
-      copy_state <= 0;
-      copy_cnt <= 0;
-      $display("Copy Stop: Exec: ", id);
-      // count_val <= count_val + 1;
-      // END BUSY:
-      rgv_control[0][1:0] <= 2'b00;
-      // Control occupancy bit
-      rgv_control[1] <= rgv_control[1] | (1 << write_server);
    endrule
    
-   // Write to memory on completion...
-   // TODO: Make wrapper object for ZipUnit+Memory
-   for(Integer i=0; i<numServers; i=i+1) begin
-      rule rl_load_mem(server_state[i] == 1 && server_cnt[i] < server_len[i]);
-         servers[i].request.put(ReqOp(tuple2(server_mem_a[i][server_cnt[i]], server_mem_b[i][server_cnt[i]])));
-         server_cnt[i] <= server_cnt[i] + 1;
+   for(Integer i=0; i<4; i=i+1) begin
+      rule rl_load_mem(server_busy[i] == True);
+         let args = server_cmd[i];
+         let len = unpackle(args.count);
+         let count = server_count[i];
+         //$display("%3d: %d %d %d", $time, i, count, len);
+         if(count < len) begin
+            // $display("ADDR A: 0x%h", unpackle(args.ptr_a.addr));
+            // $display("ADDR B: 0x%h", unpackle(args.ptr_b.addr));
+            // TODO: make function for this
+            let read_addr_a = ((unpackle(args.ptr_a.addr)+4*extend(unpackle(args.ptr_a.offset))+4*extend(unpackle(args.ptr_a.stride))*extend(count)) - truncate(pack(rg_addr_data)))>>2;
+            let read_addr_b = ((unpackle(args.ptr_b.addr)+4*extend(unpackle(args.ptr_b.offset))+4*extend(unpackle(args.ptr_b.stride))*extend(count)) - truncate(pack(rg_addr_data)))>>2;
+            let a <- rgv_data.sub(fromInteger(i)+1, truncate(read_addr_a));
+            let b <- rgv_data.sub(fromInteger(i)+1, truncate(read_addr_b));
+            servers[i].request.put(tagged ReqOp tuple2(a, b));
+            server_count[i] <= server_count[i] + 1;
+         end
       endrule
-      rule rl_exec_mem(server_state[i] == 1 && server_cnt[i] == server_len[i]);
-         servers[i].request.put(Execute);
-         server_cnt[i] <= 0;
-         server_state[i] <= 2;
-      endrule
-      rule rl_write_res_mem(server_state[i] == 2);
+      rule rl_write_res_mem(server_busy[i] == True && server_done[i] == False);
          let result <- servers[i].response.get();
          server_result[i] <= result;
-         server_state[i] <= 3;
+         server_done[i] <= True;
       endrule
    end
-
-   // Round robin
-   Reg#(Bit#(8)) cur_out <- mkReg(0);
-   for(Integer i=0; i<numServers; i=i+1) begin
-      rule rl_move_cnt(cur_out == fromInteger(i));
-         let next = cur_out + 1;
-         cur_out <= (next>=fromInteger(numServers)) ? 0 : next;
-      endrule
-      rule rl_write_rf(cur_out == fromInteger(i) && server_state[i] == 3);
-         let write_addr = server_out_addr[i];
-         let result = server_result[i];
-         for(Integer j=0; j<4; j=j+1)
-            rgv_data[write_addr+fromInteger(j)] <= pack(result)[8*j+7:8*j];
-         $display("Out: %h %h", write_addr, result);
-         server_state[i] <= 0;
-      endrule
-   end
-
    
-   interface server_reset   = toGPServer (f_reset_reqs, f_reset_rsps);
+   rule rl_write_res;
+      Vector#(4, Bool) sd = replicate(False);
+      for(Integer i=0; i<4; i=i+1)
+         sd[i] = server_done[i];
+      let f = findIndex(id, sd);
+      if(f matches tagged Valid .idx) begin
+         let data = server_result[idx];
+         let args = server_cmd[idx];
+         let addr = (unpackle(args.ptr_c.addr) - truncate(pack(rg_addr_data))) >> 2;
+         rgv_data.upd(truncate(addr), data);
+         $display("WRITE: %h", data);
+         server_done[idx] <= False;
+         server_busy[idx] <= False;
+      end
+   endrule
+   rule rl_busy_map;
+      Vector#(4, Bool) sb = replicate(False);
+      for(Integer i=0; i<4; i=i+1)
+         sb[i] = server_busy[i];
+      Bit#(4) busy_bits = pack(sb);
+      rgv_control[1] <= extend(busy_bits);
+   endrule
 
+   interface server_reset   = toGPServer (f_reset_reqs, f_reset_rsps);
+   
    method Action  set_addr_map (Fabric_Addr addr_base, Fabric_Addr addr_lim);
       if (addr_base [2:0] != 0)
 	       $display ("%0d: WARNING: ACCEL.set_addr_map: addr_base 0x%0h is not 8-Byte-aligned",

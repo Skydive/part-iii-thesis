@@ -70,6 +70,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
          end else if(m matches tagged Init .a) begin
             $display("%3d: Init", $time);
             alloc_size <= extend(a);
+            acc <= 0;
             m_count <= 0;
          end
       endmethod

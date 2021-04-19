@@ -9,6 +9,7 @@
 
 // Fake heap!
 #define ACCEL_STAT_ADDR mkACCEL_ADDR(0)
+#define ACCEL_BUSY_ADDR mkACCEL_ADDR(1)
 #define ACCEL_CMD_ADDR mkACCEL_ADDR(32)
 #define ACCEL_DATA_ADDR mkACCEL_ADDR(64)
 
@@ -37,7 +38,8 @@ struct MatUnitPtr {
 } __attribute__((packed));
 
 struct MatUnitArgs {
-  uint16_t count;
+  uint8_t unit;
+  uint8_t count;
   struct MatUnitPtr ptr_a;
   struct MatUnitPtr ptr_b;
   struct MatUnitPtr ptr_c;

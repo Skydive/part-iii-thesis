@@ -6,7 +6,7 @@ import ConfigReg :: *;
 
 interface MultiPortBRAM#(type addr, type data, numeric type n);
    method Action upd(addr a, data x);
-   method ActionValue#(data) sub(Bit#(32) bank, addr a);
+   method ActionValue#(data) sub(Bit#(8) bank, addr a);
 endinterface
 module mkMultiPortBRAM(MultiPortBRAM#(addr, data, n))
 provisos(
@@ -22,7 +22,7 @@ provisos(
          mem[i].upd(a, x);
    endmethod
    
-   method ActionValue#(data) sub(Bit#(32) bank, addr a);
+   method ActionValue#(data) sub(Bit#(8) bank, addr a);
       return mem[bank].sub(a);
    endmethod
    

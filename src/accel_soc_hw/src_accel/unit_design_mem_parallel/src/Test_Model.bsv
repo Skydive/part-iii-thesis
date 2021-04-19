@@ -1,4 +1,3 @@
-
 package Test_Model;
 
 export Test_IFC(..), mkTest;
@@ -212,12 +211,13 @@ module mkTest (Test_IFC);
             wdata = wdata >> 32;
             wstrb = wstrb >> 4;
          end
-         //$display("DEBUG WRITE!: wdata: ", fshow(wdata));
-         //$display("DEBUG WRITE!: wstrb: ", fshow(wstrb));
          for(Integer i=0; i<4; i=i+1)
             if(wstrb[i] != 0)
                rgv_data[rgv_idx+fromInteger(i)] <= wdata[8*i+7:8*i];
       end
+
+      //$display("DEBUG WRITE!: wdata: ", fshow(wdata));
+      //$display("DEBUG WRITE!: wstrb: ", fshow(wstrb));
       // else begin
 	    //    $display ("%0d: %m.rl_process_wr_req: ERROR: TEST unsupported addr", cur_cycle);
 	    //    $display ("    ", fshow (wra));

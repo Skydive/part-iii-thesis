@@ -61,10 +61,14 @@ module mkFabric_AXI4 (Fabric_AXI4_IFC);
       else if (   (soc_map.m_uart0_addr_base <= addr)
 	       && (addr < soc_map.m_uart0_addr_lim))
 	 return tuple2 (True, fromInteger (uart0_slave_num));
-      
+   // TEST
       else if (   (soc_map.m_test_addr_base <= addr)
-	             && (addr < soc_map.m_test_addr_lim))
-	       return tuple2 (True, fromInteger (test_slave_num));
+	       && (addr < soc_map.m_test_addr_lim))
+	 return tuple2 (True, fromInteger (test_slave_num));
+   //  
+      else if (   (soc_map.m_accel_addr_base <= addr)
+	             && (addr < soc_map.m_accel_addr_lim))
+	 return tuple2 (True, fromInteger (accel_slave_num));
 
 `ifdef HTIF_MEMORY
       else if (   (soc_map.m_htif_addr_base <= addr)

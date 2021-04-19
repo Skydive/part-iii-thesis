@@ -15,6 +15,9 @@
 #define MSTATUS_FS          0x00006000
 #define write_csr(reg, val) ({                            \
       asm volatile ("csrw " #reg ", %0" :: "rK"(val)); })
+#define read_csr_safe(reg) ({ register long __tmp asm("a0");  \
+      asm volatile ("csrr %0, " #reg : "=r"(__tmp));          \
+      __tmp; })
 
 void mstatus_init() {
   uintptr_t mstatus = 0;
@@ -30,14 +33,155 @@ void mstatus_init() {
 
 
 const float stack_mat_a[] = {
-   4.0,  4.0,
-   4.0,  4.0
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
+  4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,
 };
 
 const float stack_mat_b[] = {
-  -2.0, -2.0,
-   4.0,  4.0
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0,
+  -2.0, -2.0, -2.0, -2.0
 };
+
+
+void accel_test() {
+  uint8_t count = 64;
+  uint8_t cw = 4;
+  uintptr_t ptr_a_addr = accel_malloc(sizeof(stack_mat_a)/sizeof(float));
+  uintptr_t ptr_b_addr = accel_malloc(sizeof(stack_mat_b)/sizeof(float));
+  float* ptr_c_addr = (float*)accel_malloc(4);
+  memcpy((void*)ptr_a_addr, &stack_mat_a, sizeof(stack_mat_a));
+  memcpy((void*)ptr_b_addr, &stack_mat_b, sizeof(stack_mat_b));
+  memset((void*)ptr_c_addr, 0, 4*4*sizeof(float));
+
+  uint32_t time0, time1, timea, timeb;
+  time0 = read_csr_safe(cycle);
+  for(int i=0; i<16; i++) {
+    timea = read_csr_safe(cycle);
+    uint8_t x = i % cw;
+    uint8_t y = i / cw;
+    printf("%d, %d\n", x, y);
+    struct MatUnitArgs arg = {
+      .unit = i % 4,
+      .count = count,
+      .ptr_a = {.addr = ptr_a_addr, .offset = count*y, .stride = 1},
+      .ptr_b = {.addr = ptr_b_addr, .offset = x, .stride = cw},
+      .ptr_c = {.addr = ptr_c_addr+i, .offset = 0, .stride = 0},
+    };
+    timeb = read_csr_safe(cycle);
+    accel_load_command(arg);
+    accel_exec_command_sync();
+  }
+  time1 = read_csr_safe(cycle);
+  // 704 cycles - for one dot product: 11 * N = 11 * 64
+  // Prediction: 2816
+  // Parallelism Result: 2421
+  printf("CSR: Approx time taken: %d\n", timeb-timea-30);
+  for(int i=0; i<16; i++)
+    printf("Output: 0x%X -> %2.f\n", &ptr_c_addr[i], ptr_c_addr[i]);
+  printf("Time taken: %d\n", time1-time0-30);
+}
+
+void mat_test() {
+  printf("Matrix Test!\n");
+  float stack_mat_c[4*4];
+  memset((void*)stack_mat_c, 0, 4*4*sizeof(float));
+  uint32_t time0 = read_csr_safe(cycle);
+  int i=0; int j=0;
+  for(int i=0; i<4; i++) {
+    for(int j=0; j<4; j++) {
+      for(int k=0; k<64; k++) {
+        stack_mat_c[i*4+j] += stack_mat_a[i*64+k] * stack_mat_b[k*4+j];
+      }
+    }
+  }
+  uint32_t time1 = read_csr_safe(cycle);
+  for(int i=0; i<16; i++)
+    printf("Output: 0x%X -> %2.f\n", &stack_mat_c[i], stack_mat_c[i]);
+  printf("MATRIX: Time taken: %d\n", time1-time0-30);
+
+}
 
 
 void main() {
@@ -51,44 +195,15 @@ void main() {
 
   // Misalign addr
   //*((uint32_t*)0xC0001002UL) = 1337;
-  
-  uintptr_t ptr_a_addr = accel_malloc(4);
-  uintptr_t ptr_b_addr = accel_malloc(4);
-  uintptr_t ptr_c_addr = accel_malloc(4);
-  struct MatUnitArgs args = {
-    .count = 2,
-    .ptr_a = {.addr = ptr_a_addr, .offset = 0, .stride = 1},
-    .ptr_b = {.addr = ptr_b_addr, .offset = 0, .stride = 2},
-    .ptr_c = {.addr = ptr_c_addr, .offset = 0, .stride = 1},
-  };
-  memcpy((void*)(args.ptr_a.addr), &stack_mat_a, sizeof(stack_mat_a));
-  memcpy((void*)(args.ptr_b.addr), &stack_mat_b, sizeof(stack_mat_b));
-  memset((void*)(args.ptr_c.addr), 0, 2*2*sizeof(float));
 
 
-  for(int i=0; i<8; i++) {
-    uint32_t* p = (uint32_t*)&args;
-    printf("0x%X: ", p+i);
-    for(int j=0; j<4; j++)
-      printf("%.2X ", ((p[i] >> 8*j) & 0xFF));
-    //printf("%d:%X ", j, (p[i] & (0xFF << 8*j) >> 8*j));
-    printf("\n");
-  }
+  /* uint8_t busy; */
+  /* while(busy = *(uint8_t*)(ACCEL_BUSY_ADDR) != 0) { */
+  /*   printf("BUSY: %h\n", busy); */
+  /* } */
 
-
-  accel_load_command(args);
-  printf("Verifying Accelerator Memory Range?\n");
-  for(int i=0; i<8; i++) {
-    uint32_t* p = (uint32_t*)ACCEL_CMD_ADDR;
-    printf("0x%X: ", p+i);
-    for(int j=0; j<4; j++)
-      printf("%.2X ", ((p[i] >> 8*j) & 0xFF));
-      //printf("%d:%X ", j, (p[i] & (0xFF << 8*j) >> 8*j));
-    printf("\n");
-  }
-  /* accel_exec_command_sync(); */
-  /* printf("Done!"); */
-  /* printf("Output: 0x%X -> %2.f", ptr_c_addr, *(float*)ptr_c_addr); */
+  accel_test();
+  //mat_test();
   /* return 0; */
 }
 
