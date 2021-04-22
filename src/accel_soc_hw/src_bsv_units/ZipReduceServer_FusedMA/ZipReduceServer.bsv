@@ -47,13 +47,13 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
    rule rl_pipe_response_madd;
       match { .res, .exc } <- fpu_madd.response.get ();
       acc <= res;
-      $display("%3d:%2d: MulAcc Result: %h", $time, m_count, pack(res));
+      //$display("%3d:%2d: MulAcc Result: %h", $time, m_count, pack(res));
       if(m_count == alloc_size-1) begin
          state <= STATE_COMPLETE;
-         $display("%3d: STATE_COMPLETE", $time);
+         //$display("%3d: STATE_COMPLETE", $time);
          m_count <= 0;
       end else begin
-         $display("%3d: STATE_READY", $time);
+         //$display("%3d: STATE_READY", $time);
          state <= STATE_READY;
          m_count <= m_count + 1;
       end
@@ -63,12 +63,12 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
       method Action put(MRequestUT m) if (state == STATE_READY);
          if(m matches tagged ReqOp .r) begin
             match { .opd1, .opd2 } = r;
-            $display("%3d: PUT: %h %h %h", $time, acc, opd1, opd2);
+            //$display("%3d: PUT: %h %h %h", $time, acc, opd1, opd2);
             fpu_madd.request.put (tuple4(Valid(acc), opd1, opd2, defaultValue) );
             state <= STATE_LOCK;
-            $display("%3d: STATE_LOCK", $time);
+            //$display("%3d: STATE_LOCK", $time);
          end else if(m matches tagged Init .a) begin
-            $display("%3d: Init", $time);
+            //$display("%3d: Init", $time);
             alloc_size <= extend(a);
             acc <= 0;
             m_count <= 0;

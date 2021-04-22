@@ -125,6 +125,24 @@ const float stack_mat_b[] = {
 };
 
 
+/* for(int i=0; i<16; i++) { */
+/*   timea = read_csr_safe(cycle); */
+/*   uint8_t x = i % cw; */
+/*   uint8_t y = i / cw; */
+/*   struct MatUnitArgs arg = { */
+/*     .unit = i % 4, */
+/*     .count = count, */
+/*     .ptr_a = {.addr = ptr_a_addr, .offset = count*y, .stride = 1}, */
+/*     .ptr_b = {.addr = ptr_b_addr, .offset = x, .stride = cw}, */
+/*     .ptr_c = {.addr = ptr_c_addr+i, .offset = 0, .stride = 0}, */
+/*   }; */
+/* accel_load_command(arg); */
+/* accel_exec_command_sync(); */
+
+// Prediction: 2816
+// Parallelism Result Buffer: 3001
+// Parallelism Result unbuffered: 3312
+
 void accel_test() {
   uint8_t count = 64;
   uint8_t cw = 4;
@@ -136,12 +154,32 @@ void accel_test() {
   memset((void*)ptr_c_addr, 0, 4*4*sizeof(float));
 
   uint32_t time0, time1, timea, timeb;
+
+  /* struct MatUnitArgs args[16]; */
+  /* for(int i=0; i<16; i++) { */
+  /*   uint8_t x = i % cw; */
+  /*   uint8_t y = i / cw; */
+  /*   args[i].unit = i%4; */
+  /*   args[i].count = count; */
+  /*   args[i].ptr_a.addr = ptr_a_addr; args[i].ptr_a.offset = count*y; args[i].ptr_a.stride = 1; */
+  /*   args[i].ptr_b.addr = ptr_b_addr; args[i].ptr_b.offset = x;       args[i].ptr_b.stride = cw; */
+  /*   args[i].ptr_c.addr = ptr_c_addr+i; */
+  /* } */
+
+  /* time0 = read_csr_safe(cycle); */
+  /* for(int i=0; i<16; i++) { */
+  /*   uint8_t busy; */
+  /*   if(i%4 == 0) while(busy = *(uint8_t*)ACCEL_BUSY_ADDR != 0){ delay(1); } */
+  /*   accel_load_command(args[i]); */
+  /*   accel_exec_command_sync(); */
+  /* } */
+  /* time1 = read_csr_safe(cycle); */
+
+
   time0 = read_csr_safe(cycle);
   for(int i=0; i<16; i++) {
-    timea = read_csr_safe(cycle);
     uint8_t x = i % cw;
     uint8_t y = i / cw;
-    printf("%d, %d\n", x, y);
     struct MatUnitArgs arg = {
       .unit = i % 4,
       .count = count,
@@ -149,15 +187,12 @@ void accel_test() {
       .ptr_b = {.addr = ptr_b_addr, .offset = x, .stride = cw},
       .ptr_c = {.addr = ptr_c_addr+i, .offset = 0, .stride = 0},
     };
-    timeb = read_csr_safe(cycle);
     accel_load_command(arg);
     accel_exec_command_sync();
   }
   time1 = read_csr_safe(cycle);
-  // 704 cycles - for one dot product: 11 * N = 11 * 64
-  // Prediction: 2816
-  // Parallelism Result: 2421
-  printf("CSR: Approx time taken: %d\n", timeb-timea-30);
+  delay(100);
+
   for(int i=0; i<16; i++)
     printf("Output: 0x%X -> %2.f\n", &ptr_c_addr[i], ptr_c_addr[i]);
   printf("Time taken: %d\n", time1-time0-30);

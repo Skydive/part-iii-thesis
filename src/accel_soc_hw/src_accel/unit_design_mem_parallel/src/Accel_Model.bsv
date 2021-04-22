@@ -414,7 +414,7 @@ module mkAccel(Accel_IFC);
          let args = server_cmd[idx];
          let addr = (unpackle(args.ptr_c.addr) - truncate(pack(rg_addr_data))) >> 2;
          rgv_data.upd(truncate(addr), data);
-         $display("WRITE: %h", data);
+         //$display("WRITE: %h", data);
          server_done[idx] <= False;
          server_busy[idx] <= False;
       end

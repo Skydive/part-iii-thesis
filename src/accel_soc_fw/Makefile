@@ -40,7 +40,7 @@ CFLAGS += -march=$(MARCH)  -mabi=$(MABI) -DNDEBUG
 LDFLAGS += -march=$(MARCH)  -mabi=$(MABI)
 
 ifeq ($(DEBUG),yes)
-	CFLAGS += -g3 -O0
+	CFLAGS += -g3 -O2
 endif
 
 ifeq ($(DEBUG),no)
