@@ -20,6 +20,7 @@
 \def\authorcollege{Trinity College\xspace}
 \def\authoremail{ka476@cam.ac.uk}
 \def\dissertationtitle{A Risc-V based co-processor peripheral to accelerate CNN inference.}
+% Maximising throughput for a Risc-V linear algebra co-processor.
 \def\wordcount{14,235}
 
 
@@ -28,10 +29,23 @@
 
 \usepackage{booktabs}
 \usepackage{amsmath,amssymb}
+\usepackage{fancyvrb,listings}
 
 \usepackage{tikz}
 \usetikzlibrary{shapes,arrows}
 
+\lstdefinestyle{customc}{
+  belowcaptionskip=1\baselineskip,
+  breaklines=true,
+  xleftmargin=\parindent,
+  language=C,
+  showstringspaces=false,
+  basicstyle=\footnotesize\ttfamily,
+  keywordstyle=\bfseries\color{blue!40!black},
+  commentstyle=\itshape\color{purple!40!black},
+  stringstyle=\color{green!40!black},
+  morekeywords={uint32_t,uint8_t}
+}
 
 
 %% START OF DOCUMENT
@@ -63,20 +77,44 @@
 
 % Work on Story
 % Embedded Devices
+% Common for embedded devices to have their own acclerators
 % RiscV - ^ - 
 
+
+% What are our main contributions:
+% Improved upon/got working (FPU) test bench, and
+% firmware for rapid prototyping and simulations
+% of a Risc-V based CPU
+
+
+
 \chapter{Background} 
+\section{Risc-V Instruction Set}
+
+\section{Simulating Hardware}
 % Risc-V
 % Verilator
-% Xilinx Vivado
-% Quartus Qsys
 
+\section{Synthesis of Hardware}
+% Xilinx Vivado
+% Symbiflow
+
+\section{ChiselHDL \& SpinalHDL}
+\section{Bluespec Verilog}
+% Features
+% Example code / Comparisons
+% Benefits
 
 \chapter{Related Work} 
+\section{Open Source Hardware}
+% Processors:
 % BlueVec
 % Rocket RoCC
+\section{}
 % Google TPU?
 % Nvidia GPUs?!
+
+% Bluespec Verilog
 
 \chapter{Design and Implementation}
 % Design decisions
@@ -108,8 +146,16 @@
 
 
 \section{SoC Design}
-% NOTE: image of SoC
+% TODO: image of SoC
 % CPU/AXI4 e.t.c.
+% Piccolo
+% VexRiscV
+% Rocket
+% SiFive Freedom E310
+\subsection{ARM Cortex M0/M3}
+\subsection{Freedom E500}
+\subsection{VexRiscV}
+\subsection{Piccolo}
 
 \subsection{AXI4 Protocol}
 % TODO: Background info/filler and origin
@@ -117,12 +163,17 @@
 % TODO: How is memory read/written from
 
 The AXI4 protocol comes with the disadvantage of being able write a maximum of 4
-bytes per clock cycle.
+bytes per request. Each request, orchestrated by the CPU, spans multiple clock cycles.
 % TODO: To what extent does this 
 
-\section{Fixing Piccolo}
+\section{Testbench Setup}
+\subsection{Risc-V Assembly \& Firmware Structure}
+\subsubsection{Linker File}
+% TODO: Avoiding stack overflow
+% TODO: 
+
 \subsection{Floating Point Unit}
-\subsubsection{Fixing FPU typeerrors}
+\subsubsection{Fixing Piccolo FPU typeerrors}
 The latest commit of the Piccolo processor, (), has a type error in the floating
 point unit. 
 
@@ -167,7 +218,7 @@ looking at the source code for the Spike Risc-V proxy kernel.
 
 % https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
 
-\subsection{Test Accelerator Control}
+\subsection{Test AXI4 Peripheral}
 When constructing an accelerator, it is important to work constructively from a minimum
 functioning unit.
 
@@ -182,36 +233,62 @@ This allows the firmware to write an array into the accelerator memory, set the
 execution control bit, and stall until the busy bit is unset.
 
 % NOTE: Firmware C code for accelerator
-% NOTE: Console log
-% 0: 0
-% 1: 1
-% 2: 2
-% 3: 3
-% Set Control Bit..
-% Stalling..
-% Stall complete!
-% 0: 0
-% 1: 2
-% 2: 4
-% 3: 6
+\begin{lstlisting}[language=C,style=customc]
+#define TEST_CONTROL_ADDR 0xC0001000UL
+#define TEST_DATA_ADDR 0xC0001008UL
+#define TEST_RANGE 4
+void main() {
+  for(int i=0; i<TEST_RANGE; i++) {
+    *((uint32_t volatile*)TEST_DATA_ADDR+i) = i;
+    uint32_t data = *((uint32_t*)data_addr+i);
+    printf("%d: %d\n", i, data);
+  }
 
+  println("Set Control Bit..");
+  *((uint8_t volatile*)TEST_CONTROL_ADDR) |= 0x1;
+
+  while(*((uint8_t volatile*)TEST_CONTROL_ADDR) & 0x2 == 0) {}
+  println("Stalling..");
+
+  println("Stall complete!");
+  for(int i=0; i<TEST_RANGE; i++) {
+    uint32_t data = *((uint32_t volatile*)TEST_DATA_ADDR+i);
+    printf("%d: %d\n", i, data);
+  }
+}
+\end{lstlisting}
+% NOTE: Console log
+\begin{verbatim}
+0: 0
+1: 1
+2: 2
+3: 3
+Set Control Bit..
+Stalling..
+Stall complete!
+0: 0
+1: 2
+2: 4
+3: 6
+\end{verbatim}
 
 \subsection{AXI4 Alignment/Padding}
 
 This code results in the cpu trapping:
-\texttt{*((uint32\_t\*)0xC0001002) = 1337;}
-
-\texttt{Trap\_Info { epc: 'h800022d6, exc\_code: 'h6, tval: 'hc0001002 }}
+\begin{verbatim}
+*((uint32_t\*)0xC0001002) = 1337;
+Trap_Info { epc: 'h800022d6, exc_code: 'h6, tval: 'hc0001002 }
+TRAP EXC: STORE_AMO_ADDR_MISALIGNED
 The exception/trap code corresponds to:
-TRAP EXC: STORE\_AMO\_ADDR\_MISALIGNED
+\end{verbatim}
 
+\subsection{Struct Padding}
 % TODO: Introduce the need for struct padding/packing
 This is of particular importance to consider when we issue a command to the
 accelerator. In order to ensure 
 
-\section{Matrix Reduction}
+\section{Matrix Multiplication Peripheral}
 \subsection{Overview}
-
 Mathematically, the result of a matrix multiplication may be expressed
 accordingly:
 \begin{align*}
@@ -232,6 +309,8 @@ possible that
 Our peripheral contains a RegFile of internal memory which is memory mapped to
 the CPU via an AXI4 bus slave interface.
 
+\begin{table}
+  \centering
 \begin{tabular}{lll}
   \toprule
   Offset Address Range & Size & Purpose \\
@@ -241,6 +320,7 @@ the CPU via an AXI4 bus slave interface.
   \texttt{0x0040-0x1000} & $\approx$ 4 KB & Memory \\
   \bottomrule
 \end{tabular}
+\end{table}
 
 \subsubsection{Status}
 The first byte of our status memory is to monitor, and control execution from
@@ -252,26 +332,39 @@ execute status bit, and the accelerator should run the appropriate command.
 
 \subsubsection{Memory}
 
+\subsection{Design Decisions}
+\subsubsection{Hybrid/Monolithic}
 
-\subsection{Unit Design} 
+\subsection{Command Issuing \& Decoding}
+% Endianness (BSV)
+% Struct padding
+
+\subsection{DP Unit Design} 
 BSV contains a FloatingPoint library, which extends the Server module.
 We can put a request, and after some number of clock cycles, get a response.
 
-% Unit Design
-% Unit: Simple: Pipelined Multiply + Sequential Add
-% Unit: FusedMultiplyAccumulate
-% Unit: Speedup - Tree addition (pipelined addition)
+\subsubsection{Fused Multiply-Accumulate}
 
+
+\subsubsection{Pipelined Multiplication with Addition}
+\subsubsection{Pipelined Multiplication \& Pairwise Addition}
+% Unit Design: TODO: Include diagram
 
 % Unit: Memory Parallelism
 % Unit: Memory Banking:
-% https://tomverbeure.github.io/2019/08/03/Multiport-Memories.html  
 
-\subsection{Unit Speed-up}
-\subsection{Unit Parallelism - Naive}
+\subsection{DP Unit Parallelism}
+% TODO: Naive. READ/WRITE ports
+% \subsection{Why bluespec?}
+% \subsection{Bluespec - Polymorphism/Configurable hardware}
+
+
+% TODO: Evaluation of results: ~10x faster
+% TODO: Explanation of results
+% 
 
 % TODO: Jesus...
-\subsection{Memory Parallelism}
+\subsection{Multi-Ported Memory}
 
 % What is a Regfile, What is BlockRam? What is SRAM?
 We observe that a RegFile, has a maximum of 5 read ports, and 1 write port.
@@ -286,15 +379,75 @@ Typically, BRAM, has 2 read ports, and 1 write port.
 % `pmem_mem_0.sub a__h32094' at "MultiPortBRAM.bsv", line 18, column 37
 % `pmem_mem_0.sub a__h32127' at "MultiPortBRAM.bsv", line 18, column 37
 
-\subsection{Memory Striping/Banking}
+\subsubsection{Memory Striping}
+
+\subsection{Rule conflicts, rapid execution}
+
+% TODO: UNKNOWN TIMINGS?:
+% TODO: Cycle count / byte read in IO memory (when bypassing the cache!?)
+% TODO: CACHE R/W speed!?
+
+\section{Commmunication Bottleneck}
+\subsection{Protocol efficiency/optimisation}
+% Analysis of struct packing
+% Attribute ((packed))
+% uint8_t offset <-- redundant (-3 bytes)
+% uint8_t unit <-- push to accelerator
+
+% uintptr_t <-- Make ADDR 16 bits!?, subtract base address (64KB accel memory...) ()
+% (-3*2=-6 bytes)
+% 0xC0002900 --> 32 bits
+% 2900 --> 16 bits
+% 1000 (16-bit base address)
+% 1900
+% 6 bytes ~=? 6 cycles saved
+% 2-4 cycles/base address subtraction
+% ALIGN: ACCEL @ 16-bit base address boundary
+% Therefore 0-cost LE typecast <---> address calculation! (SMART)
 
 
-\section{Bottlenecks}
+\subsection{Command Buffering}
+% In firmware
+% Stack Instruction Buffering
+% In hardware
+% Accelerator buffer/program counter. (Internal stack)
+
+\begin{table}
+  \centering
+  \begin{tabular}{r|rr}
+    \toprule
+    Units & Peripheral & Processor\\
+    \midrule
+    0  &     ? & 21500 \\
+    1  & 13366 & 13596 \\
+    2  &  6817 &  7085 \\
+    4  &  3670 &  3954 \\
+    8  &  2621 &  2889 \\
+    12 &  2666 &  2929 \\
+    16 &  2633 &  2916 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Overhead: Buffer cycles: 723. Copy cycles: 4984}
+\end{table}
+
+
+\subsection{Firmware Stalling/Interrupts}
+
+\subsection{Instruction jumping}
+
 
 \chapter{Evaluation} 
 \section{Methodology}
+\subsection{Benchmarking \& Counting cycles}
+From the Risc-V specification, we take a look at the mcycles and minstret
+registers
+.
+\subsection{Synthesis}
 
+\section{Accelerator}
+% TODO: Example + study (Evaluation)
 \subsection{Fused Multiply Accumulate}
+
 % Cannot exploit pipelined nature of unit.
 % Faster than individual FP multiply, then add. 10 cycles vs 14 cycles.
 
@@ -318,6 +471,9 @@ Typically, BRAM, has 2 read ports, and 1 write port.
 % 470: STATE_COMPLETE
 % 480: Output: 42800000
 
+
+\subsection{}
+
 \begin{align*}
   T_{Naive}(N) &= 11+N + 4N \\
   &= 15 + 5N \\
@@ -328,12 +484,14 @@ Typically, BRAM, has 2 read ports, and 1 write port.
 \end{align*}
 
 
-\subsection{Benchmarking \& Counting cycles}
-From the Risc-V specification, we take a look at the mcycles and minstret
-registers.
-% TODO: Example + study (Evaluation)
+
+% TODO: ARM Cortex benchmark
 
 \subsection{MNIST Neural Network: Dense Layers}
+
+\section{Synthesis}
+\subsection{Implementation}
+\subsection{Xilinx Arty A7-100T}
 
 \chapter{Summary and Conclusions} 
 

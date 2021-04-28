@@ -1,7 +1,4 @@
-PROJ_NAME=hello_world
-DEBUG=yes
-BENCH=yes
-
+PROJ_NAME=accel_fw
 SRCS = 	$(wildcard src/*.c) \
 		$(wildcard src/*.cpp)  \
 		$(wildcard src/*.S)
@@ -39,17 +36,8 @@ MARCH := rv32imafc
 CFLAGS += -march=$(MARCH)  -mabi=$(MABI) -DNDEBUG
 LDFLAGS += -march=$(MARCH)  -mabi=$(MABI)
 
-ifeq ($(DEBUG),yes)
-	CFLAGS += -g3 -O2
-endif
-
-ifeq ($(DEBUG),no)
-	CFLAGS += -g -Os
-endif
-
-ifeq ($(BENCH),yes)
-	CFLAGS += -fno-inline
-endif
+CFLAGS += -O2
+CFLAGS += -fno-inline
 
 
 RISCV_OBJCOPY = $(RISCV_PATH)/bin/$(RISCV_NAME)-objcopy

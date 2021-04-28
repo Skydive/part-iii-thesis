@@ -120,6 +120,8 @@ deriving (Bits, Eq, FShow);
 // ================================================================
 // The module
 
+
+
 (* synthesize *)
 module mkSoC_Top (SoC_Top_IFC);
    Integer verbosity = 0;    // Normally 0; non-zero for debugging
@@ -154,7 +156,7 @@ module mkSoC_Top (SoC_Top_IFC);
    // SoC IPs
    UART_IFC   uart0  <- mkUART;
    Test_IFC   test <- mkTest;
-   Accel_IFC  accel <- mkAccel;
+   let accel <- mkAccel_A;
    
 `ifdef INCLUDE_ACCEL0
    // Accel0 master to fabric
@@ -458,6 +460,13 @@ module mkAXI4_Deburster_A (AXI4_Deburster_IFC #(Wd_Id,
 						Wd_Data,
 						Wd_User));
    let m <- mkAXI4_Deburster;
+   return m;
+endmodule
+
+
+(* synthesize *)
+module mkAccel_A (Accel_IFC#(16));
+   let m <- mkAccel;
    return m;
 endmodule
 

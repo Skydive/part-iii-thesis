@@ -8,6 +8,7 @@ export Accel_IFC(..), mkAccel;
 
 import  Vector       :: *;
 import  FIFOF        :: *;
+import  FIFO         :: *;
 import  SpecialFIFOs :: *;
 import  GetPut       :: *;
 import  ClientServer :: *;
@@ -50,7 +51,7 @@ Bit #(16) offset_con_occu = 1;
 // ================================================================
 // Interface
 
-interface Accel_IFC;
+interface Accel_IFC#(numeric type banks);
    // Reset
    interface Server #(Bit #(0), Bit #(0)) server_reset;
 
@@ -139,20 +140,20 @@ function Bit #(64) fn_extract_AXI4_data (Bit #(64) data, Bit #(8) strb);
    return result;
 endfunction
 
-(* synthesize *)
-module mkAccel(Accel_IFC);
+
    
+module mkAccel(Accel_IFC#(banks));
    Integer verbosity = 0;
    Reg #(Module_State) rg_state <- mkReg(STATE_START);
 
    Vector #(32,  Reg #(Bit #(8))) rgv_control <- replicateM(mkConfigReg(0));
    Vector #(32,  Reg #(Bit #(8))) rgv_command <- replicateM(mkReg(0));
    //Vector #(256, Reg #(Bit #(8))) rgv_data <- replicateM(mkReg(0));
-   MultiPortBRAM#(Bit#(16), FSingle, 5) rgv_data <- mkMultiPortBRAM;
+   MultiPortBRAM#(Bit#(16), FSingle, TAdd#(banks,1)) rgv_data <- mkMultiPortBRAM;
 
    // These regs represent where this UART is placed in the address space.
-   Reg #(Fabric_Addr)  rg_addr_base <- mkRegU;
-   Reg #(Fabric_Addr)  rg_addr_lim  <- mkRegU;
+   Reg #(Fabric_Addr) rg_addr_base <- mkRegU;
+   Reg #(Fabric_Addr) rg_addr_lim  <- mkRegU;
 
    Reg #(Fabric_Addr) rg_addr_control <- mkRegU;
    Reg #(Fabric_Addr) rg_addr_command <- mkRegU;
@@ -163,7 +164,10 @@ module mkAccel(Accel_IFC);
 
    // Connector to AXI4 fabric
    AXI4_Slave_Xactor_IFC #(Wd_Id, Wd_Addr, Wd_Data, Wd_User) slave_xactor <- mkAXI4_Slave_Xactor;
+   
+   FIFOF #(Bit #(0)) f_write_exec <- mkBypassFIFOF;
 
+   
    rule rl_reset;
       f_reset_reqs.deq;
 
@@ -244,6 +248,7 @@ module mkAccel(Accel_IFC);
       slave_xactor.i_rd_data.enq (rdr);
    endrule
 
+   // TODO: descending urgency
    rule rl_process_wr_req (rg_state == STATE_READY);
       let wra <- pop_o (slave_xactor.o_wr_addr);
       let wrd <- pop_o (slave_xactor.o_wr_data);
@@ -282,6 +287,10 @@ module mkAccel(Accel_IFC);
          for(Integer i=0; i<4; i=i+1)
             if(wstrb[i] != 0)
                rgv_control[rgv_idx+fromInteger(i)] <= wdata[8*i+7:8*i];
+         if(rgv_idx == 0 && wstrb[0] == 1) begin // Execute command!
+            let exec_bit = wdata[0];
+            f_write_exec.enq(?);
+         end
       end
       else if (byte_addr >= zeroExtend(addr_TEST_command) && byte_addr < zeroExtend(addr_TEST_data)) begin
          let rgv_idx = (wra.awaddr - rg_addr_command);
@@ -341,18 +350,20 @@ module mkAccel(Accel_IFC);
       return unpack(rgv_control[0][1]);
    endfunction
 
-   FIFOF#(MatUnitArgs) cmd_buf <- mkBypassFIFOF;
-   Vector#(4,Server#(MRequestUT, FSingle)) servers <- replicateM(mkZipReduceServer);
-   Vector#(4, Reg#(MatUnitArgs)) server_cmd <- replicateM(mkReg(unpack(0)));
-   Vector#(4, Reg#(Bool)) server_busy <- replicateM(mkReg(False));
-   Vector#(4, Reg#(Bit#(8))) server_count <- replicateM(mkReg(0));
-   Vector#(4, Reg#(Bool)) server_done <- replicateM(mkReg(False));
-   Vector#(4, Reg#(FSingle)) server_result <- replicateM(mkReg(0));
+   Vector#(banks,Server#(MRequestUT, FSingle)) servers <- replicateM(mkZipReduceServer);
+   
+   // SCHEDULING:
+   Vector#(banks, Reg#(MatUnitArgs)) server_cmd <- replicateM(mkReg(unpack(0)));
+   Vector#(banks, Reg#(Bool)) server_busy <- replicateM(mkReg(False));
+   Vector#(banks, Reg#(Bit#(8))) server_count <- replicateM(mkReg(0));
+
+   // WRITEBACK
+   Vector#(banks, Reg#(Bool)) server_done <- replicateM(mkReg(False));
+   Vector#(banks, Reg#(FSingle)) server_result <- replicateM(mkReg(0));
 
    // TODO: somehow make use of Connectables!?
-   
-   rule rl_decode_command (rg_state == STATE_READY && control_is_exec() && !control_is_busy());
-      rgv_control[0][1:0] <= 2'b10;
+   rule rl_decode_command (!control_is_busy());
+      f_write_exec.deq;
       Bit#(160) command = 0;
       Vector#(20, Bit#(8)) cmd_vec;
       for(Integer i=0; i<20; i=i+1)
@@ -360,32 +371,34 @@ module mkAccel(Accel_IFC);
       command = pack(reverse(cmd_vec)); // Swap byte order
       // TODO: Decode single command
       MatUnitArgs args = unpack(truncate(command)); // Reverse endian-ness
-      $display("ENQ command: ", fshow(unpackle(args.ptr_a.addr)));
-      $display("COMMAND: %h", pack(args));
-      cmd_buf.enq(args);
-   endrule
+      //$display("ENQ command: ", fshow(unpackle(args.ptr_a.addr)));
+      $display("%3d: COMMAND RECEIVED: %h", $time, pack(args));
 
-   rule rl_exec_command (cmd_buf.notEmpty());
-      MatUnitArgs args = cmd_buf.first;
       let unit_id = unpackle(args.unit);
       let count = unpackle(args.count);
       if(server_busy[unit_id] == False) begin
-         cmd_buf.deq;
+         //cmd_buf.deq;
+         $display("%3d: COMMAND ISSUED: %h", $time, pack(args));
          server_busy[unit_id] <= True;
          server_cmd[unit_id] <= args;
          server_count[unit_id] <= 0;
          servers[unit_id].request.put(tagged Init unpack(extend(count)));
          rgv_control[0][1:0] <= 2'b00;
       end
+      else begin
+         $display("%3d: COMMAND DROPPED: %h", $time, pack(args));
+         rgv_control[0][1:0] <= 2'b00;
+      end
    endrule
    
-   for(Integer i=0; i<4; i=i+1) begin
+   for(Integer i=0; i<valueOf(banks); i=i+1) begin
       rule rl_load_mem(server_busy[i] == True);
          let args = server_cmd[i];
          let len = unpackle(args.count);
          let count = server_count[i];
          //$display("%3d: %d %d %d", $time, i, count, len);
          if(count < len) begin
+            if(count == 0)$display("%3d: %1d BEGIN", $time, i);
             // $display("ADDR A: 0x%h", unpackle(args.ptr_a.addr));
             // $display("ADDR B: 0x%h", unpackle(args.ptr_b.addr));
             // TODO: make function for this
@@ -401,31 +414,51 @@ module mkAccel(Accel_IFC);
          let result <- servers[i].response.get();
          server_result[i] <= result;
          server_done[i] <= True;
+         Vector#(16, Bool) sd = replicate(False);
+         for(Integer i=0; i<valueOf(banks); i=i+1)
+            sd[i] = server_done[i];
+         Bit#(8) done_bits = truncate(pack(sd));
+         $display("%3d: %1d DONE: %b", $time, i, done_bits);
       endrule
    end
    
    rule rl_write_res;
-      Vector#(4, Bool) sd = replicate(False);
-      for(Integer i=0; i<4; i=i+1)
+      Vector#(16, Bool) sd = replicate(False);
+      for(Integer i=0; i<valueOf(banks); i=i+1)
          sd[i] = server_done[i];
+
+      Vector#(16, Bool) sb = replicate(False);
+      for(Integer i=0; i<valueOf(banks); i=i+1)
+         sb[i] = server_busy[i];
+      Bit#(8) done_bits = truncate(pack(sd));
+      Bit#(8) busy_bits = truncate(pack(sb));
+
+      // Bit#(64) t <- $time;
+      // if(t >= 213491 && t <= 213520) begin
+         
+      //    $display("%3d: DEBUG: DONE: %b BUSY: %b CONTROL: %b", $time, done_bits, busy_bits, rgv_control[0]);
+      // end
+
       let f = findIndex(id, sd);
       if(f matches tagged Valid .idx) begin
          let data = server_result[idx];
          let args = server_cmd[idx];
          let addr = (unpackle(args.ptr_c.addr) - truncate(pack(rg_addr_data))) >> 2;
          rgv_data.upd(truncate(addr), data);
-         //$display("WRITE: %h", data);
+         $display("%3d: %1d WRITE: %8h DONE: %b BUSY: %b CONTROL: %b", $time, idx, addr, done_bits, busy_bits, rgv_control[0]);
          server_done[idx] <= False;
          server_busy[idx] <= False;
       end
    endrule
    rule rl_busy_map;
-      Vector#(4, Bool) sb = replicate(False);
-      for(Integer i=0; i<4; i=i+1)
+      Vector#(16, Bool) sb = replicate(False);
+      for(Integer i=0; i<valueOf(banks); i=i+1)
          sb[i] = server_busy[i];
-      Bit#(4) busy_bits = pack(sb);
-      rgv_control[1] <= extend(busy_bits);
+      Bit#(16) busy_bits = truncate(pack(sb));
+      rgv_control[4] <= extend(busy_bits[7:0]); // REVERSE ENDIAN
+      rgv_control[5] <= extend(busy_bits[15:8]);
    endrule
+   
 
    interface server_reset   = toGPServer (f_reset_reqs, f_reset_rsps);
    
@@ -450,5 +483,9 @@ module mkAccel(Accel_IFC);
 
    interface slave = slave_xactor.axi_side;
 endmodule
+
+
+
+
 
 endpackage

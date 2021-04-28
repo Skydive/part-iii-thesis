@@ -13,8 +13,8 @@
 #define ACCEL_CMD_ADDR mkACCEL_ADDR(32)
 #define ACCEL_DATA_ADDR mkACCEL_ADDR(64)
 
-#define ACCEL_STAT_BUSY_BIT 0
-#define ACCEL_STAT_EXEC_BIT 1
+#define ACCEL_STAT_EXEC_BIT 0
+#define ACCEL_STAT_BUSY_BIT 1
 
 uintptr_t malloc_ptr = 0;
 uintptr_t accel_malloc(int size) {
@@ -36,7 +36,9 @@ struct MatUnitPtr {
   uint8_t offset;
   uint8_t stride;
 } __attribute__((packed));
-
+void print_mat_unit_ptr(struct MatUnitPtr ptr) {
+  printf("MatUnitPtr { addr: %X, offset: %d, stride: %d}", ptr.addr, ptr.offset, ptr.stride);
+}
 struct MatUnitArgs {
   uint8_t unit;
   uint8_t count;
@@ -44,6 +46,12 @@ struct MatUnitArgs {
   struct MatUnitPtr ptr_b;
   struct MatUnitPtr ptr_c;
 } __attribute__((packed));
+void print_mat_unit_args(struct MatUnitArgs args) {
+  printf("MatUnitArgs { unit: %d, count: %d, ptr_a: ", args.unit, args.count); print_mat_unit_ptr(args.ptr_a);
+  printf(", ptr_b: "); print_mat_unit_ptr(args.ptr_b);
+  printf(", ptr_c: "); print_mat_unit_ptr(args.ptr_c);
+  printf("}");
+}
 
 // Status Query
 bool accel_exec_is_busy() {
@@ -55,29 +63,10 @@ void accel_exec_command() {
   *p = *p | (1<<0);
 }
 
-/* uint16_t swe_u16(uint16_t s) { */
-/*   printf("TEST"); */
-/*   uint32_t result; */
-/*   uint8_t* p = (uint8_t*)result; */
-/*   uint8_t* q = (uint8_t*)&s; */
-/*   p[0] = q[1]; */
-/*   p[1] = q[0]; */
-/*   return result; */
-/* } */
-/* uint32_t swe_u32(uint32_t s) { */
-/*   uint32_t result; */
-/*   uint8_t* p = (uint8_t*)result; */
-/*   uint8_t* q = (uint8_t*)&s; */
-/*   p[0] = q[3]; */
-/*   p[1] = q[2]; */
-/*   p[2] = q[1]; */
-/*   p[3] = q[0]; */
-/*   return result; */
-/* } */
-
-
 void accel_load_command(struct MatUnitArgs args) {
-  /* printf("Size: %d\n", sizeof(struct MatUnitArgs)); */
+  volatile struct MatUnitArgs* base = (volatile struct MatUnitArgs*)ACCEL_CMD_ADDR;
+  *base = args; // YAY C99 struct assignment!
+  //printf("Size: %d\n", sizeof(struct MatUnitArgs));
   memcpy((void*)ACCEL_CMD_ADDR, &args, sizeof(struct MatUnitArgs));
 }
 
