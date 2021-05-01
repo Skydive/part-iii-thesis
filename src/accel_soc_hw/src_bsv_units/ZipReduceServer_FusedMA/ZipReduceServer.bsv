@@ -44,7 +44,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
    ConfigReg#(FSingle) acc <- mkConfigReg(0.0);
    Reg#(UInt#(32)) alloc_size <- mkReg(0);
 
-   rule rl_pipe_response_madd;
+   rule rl_pipe_response_madd(state == STATE_LOCK);
       match { .res, .exc } <- fpu_madd.response.get ();
       acc <= res;
       //$display("%3d:%2d: MulAcc Result: %h", $time, m_count, pack(res));

@@ -82,9 +82,10 @@
 
 
 % What are our main contributions:
-% Improved upon/got working (FPU) test bench, and
+% - Improved upon/got working (FPU) test bench, and
 % firmware for rapid prototyping and simulations
 % of a Risc-V based CPU
+% Achieved an approx 5x speed-up - 
 
 
 
@@ -93,6 +94,7 @@
 
 \section{Simulating Hardware}
 % Risc-V
+% Spike
 % Verilator
 
 \section{Synthesis of Hardware}
@@ -109,12 +111,16 @@
 \section{Open Source Hardware}
 % Processors:
 % BlueVec
+% https://www.cl.cam.ac.uk/~swm11/papers/FPL2013-BlueVec.pdf
+
 % Rocket RoCC
 \section{}
 % Google TPU?
 % Nvidia GPUs?!
 
 % Bluespec Verilog
+
+% SIMD/
 
 \chapter{Design and Implementation}
 % Design decisions
@@ -163,7 +169,12 @@
 % TODO: How is memory read/written from
 
 The AXI4 protocol comes with the disadvantage of being able write a maximum of 4
-bytes per request. Each request, orchestrated by the CPU, spans multiple clock cycles.
+bytes per request on 32-bit systems. Each request, orchestrated by the CPU,
+spans multiple clock cycles.
+
+
+
+
 % TODO: To what extent does this 
 
 \section{Testbench Setup}
@@ -174,8 +185,8 @@ bytes per request. Each request, orchestrated by the CPU, spans multiple clock c
 
 \subsection{Floating Point Unit}
 \subsubsection{Fixing Piccolo FPU typeerrors}
-The latest commit of the Piccolo processor, (), has a type error in the floating
-point unit. 
+The latest commit of the Piccolo processor, at the time of development, (), had
+a type error in the floating point unit. 
 
 We must enter, FPU.bsv and FBox\_Core.bsv and prefix the RoundMode type with FloatingPoint::RoundMode.
 
@@ -199,38 +210,106 @@ We must enter, FPU.bsv and FBox\_Core.bsv and prefix the RoundMode type with Flo
 
 \subsubsection{mstatus CSR}
 Once the FPU is successfully compiled, and the processor is compiled with
-floating point support, the processor will trap when a floating point
-instruction is executed.
+floating point support, the processor will trap and throw an exception when any
+floating point instruction is executed. When a processor exception takes place,
+the processor moves the program counter back to the start of the boot ROM, this
+is observed as infinite looping, where code after the first floating point
+instruction will never execute.
 
-% NOTE: Clean code
-\texttt{float a = 1.0f;} \\
-\texttt{80002276: lui a5, 0x80001}
-\texttt{8000227a: flw fa5,424(a5)}
-\texttt{8000227e: fsw fa5,-28(s0)}
-\texttt{Trap\_Info { epc: 'h8000227a, exc\_code: 'h2, tval: 'h1a87a787 }} \\
-\texttt{Trap Exc: ILLEGAL\_INSTRUCTION} \\
+With an open source processor, we have the ability to inspect and modify the source code,
+and recompile the processor. We can instruct the CPU to print the internal state
+when a trap occurs.
+
+% CPU.bsv
+% TODO: BSV
+\begin{lstlisting}[language=C,style=customc]
+   rule rl_trap ((rg_state == CPU_TRAP)
+		 && (stage1.out.ostatus != OSTATUS_BUSY));
+
+      [...]
+
+      $display("DEBUG: CPU TRAP: ", fshow(rg_trap_info));
+      $display("Exc_Code: ", fshow_trap_Exc_Code(exc_code));
+      $finish(0);
+   endrule: rl_trap
+\end{lstlisting}
+\begin{lstlisting}[language=C,style=customc]
+  float a = 1.0f;
+  // Assembly:
+  // 80002276: lui a5, 0x80001
+  // 8000227a: flw fa5,424(a5)
+  // 8000227e: fsw fa5,-28(s0)
+  // Prints:
+  // Trap_Info { epc: 'h8000227a, exc_code: 'h2, tval: 'h1a87a787 }
+  // Exc_Code: ILLEGAL_INSTRUCTION
+\end{lstlisting}
+
+% EX_ALU_functions.bsv --> fv_LD
+We observe that all FP ALU functions check the fs bit of the CSR register.
+This can be seen from the ALU fv\_LD function that runs when the flw instruction
+is executed.
+\begin{lstlisting}[language=C,style=customc]
+function ALU_Outputs fv_LD (ALU_Inputs inputs);
+   [...]
+   // FP loads are not legal unless the MSTATUS.FS bit is set
+   Bool legal_FP_LD = True;
+`ifdef ISA_F
+   if (opcode == op_LOAD_FP)
+      legal_FP_LD = (fv_mstatus_fs (inputs.mstatus) != fs_xs_off);
+`endif
+   let alu_outputs = alu_outputs_base;
+
+   alu_outputs.control   = ((legal_LD && legal_FP_LD) ? CONTROL_STRAIGHT
+                                                      : CONTROL_TRAP);
+   [...]
+   return alu_outputs;
+endfunction
+\end{lstlisting}
+
+We later learn, that this is an intentional design descision as per the Risc-V
+specification, Chapter 3, Section 1.11. The fs bit on the mstatus CSR must be
+set in order for floating-point instructions to be enabled. We can see how this
+is done in bare-metal C, by looking at the source code for the Spike Risc-V
+proxy kernel.
 
 % TODO: Citation
-This makes sense as per the Risc-V specification, Chapter 3, Section 1.11.
-The fs bit on the mstatus CSR must be set in order for floating-point
-instructions to be enabled. We can see how this is done in bare-metal C, by
-looking at the source code for the Spike Risc-V proxy kernel.
-
+% “The RISC-V Instruction Set Manual, Volume II: Privileged Architecture,
+% Document Version 20190608-Priv-MSU-Ratified”, Editors Andrew Waterman and
+% Krste Asanovi´c, RISC-V Foundation, June 2019
 % https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
+% TODO: Citation (Spike) + RiscV PK
 
-\subsection{Test AXI4 Peripheral}
-When constructing an accelerator, it is important to work constructively from a minimum
-functioning unit.
+\subsection{Test Peripheral (AXI4)}
+When building a peripheral, it is important to first work constructively from a
+minimum functioning unit. In order for our embedded processor to communicate
+with with our peripheral, we make use of memory-mapped I/O. We map a small
+unoccupied memory address range to our peripheral, and give it a small internal
+region of memory where 4-byte integers can be read/written from.
 
-We make use of the test bench provided by Piccolo as a basis for our
-simulations.
+\subsubsection{AXI4 Alignment/Padding}
+This code results in the cpu trapping:
+\begin{verbatim}
+*((uint32_t\*)0xC0001002) = 1337;
+Trap_Info { epc: 'h800022d6, exc_code: 'h6, tval: 'hc0001002 }
+TRAP EXC: STORE_AMO_ADDR_MISALIGNED
+The exception/trap code corresponds to:
+\end{verbatim}
 
-We create a simple peripheral, with a region of memory that we can write 4-byte
-integers into. When a special execution bit is set, we set a special accelerator
-busy bit and unset the execution bit. In a single cycle, as part of the
-accelerator, if the busy bit is set, we double the array and unset the busy bit.
-This allows the firmware to write an array into the accelerator memory, set the
-execution control bit, and stall until the busy bit is unset.
+\subsubsection{Struct Padding}
+% TODO: Introduce the need for struct padding/packing
+This is of particular importance to consider when we issue a command to the
+accelerator. In order to ensure 
+
+
+\subsubsection{Firmware}
+When a special execution bit is set, we set a special accelerator busy bit and
+unset the execution bit. In a single cycle, within the accelerator, if the
+busy bit is set, we double the array and unset the busy bit. This allows the
+firmware to stall until the busy bit is unset, and the computation has been
+completed.
+
+Throughout this process, we make use of, and modify, the fully functioning test
+bench provided by Piccolo as a basis for our simulations of the test peripheral.
 
 % NOTE: Firmware C code for accelerator
 \begin{lstlisting}[language=C,style=customc]
@@ -240,15 +319,15 @@ execution control bit, and stall until the busy bit is unset.
 void main() {
   for(int i=0; i<TEST_RANGE; i++) {
     *((uint32_t volatile*)TEST_DATA_ADDR+i) = i;
-    uint32_t data = *((uint32_t*)data_addr+i);
+    uint32_t data = *((uint32_t*)TEST_DATA_ADDR+i);
     printf("%d: %d\n", i, data);
   }
 
   println("Set Control Bit..");
-  *((uint8_t volatile*)TEST_CONTROL_ADDR) |= 0x1;
+  *((uint8_t volatile*)TEST_CONTROL_ADDR) |= 1;
 
-  while(*((uint8_t volatile*)TEST_CONTROL_ADDR) & 0x2 == 0) {}
-  println("Stalling..");
+  while(*((uint8_t volatile*)TEST_CONTROL_ADDR) & 2 == 0) {}
+  println("Stalling.."); // Printing Stalling... stalls anyway...
 
   println("Stall complete!");
   for(int i=0; i<TEST_RANGE; i++) {
@@ -257,6 +336,7 @@ void main() {
   }
 }
 \end{lstlisting}
+
 % NOTE: Console log
 \begin{verbatim}
 0: 0
@@ -272,21 +352,6 @@ Stall complete!
 3: 6
 \end{verbatim}
 
-\subsection{AXI4 Alignment/Padding}
-
-This code results in the cpu trapping:
-\begin{verbatim}
-*((uint32_t\*)0xC0001002) = 1337;
-Trap_Info { epc: 'h800022d6, exc_code: 'h6, tval: 'hc0001002 }
-TRAP EXC: STORE_AMO_ADDR_MISALIGNED
-The exception/trap code corresponds to:
-\end{verbatim}
-
-\subsection{Struct Padding}
-% TODO: Introduce the need for struct padding/packing
-This is of particular importance to consider when we issue a command to the
-accelerator. In order to ensure 
-
 \section{Matrix Multiplication Peripheral}
 \subsection{Overview}
 Mathematically, the result of a matrix multiplication may be expressed
@@ -296,19 +361,28 @@ accordingly:
   C_{ij} &= \sum_k A_{ik}B_{kj}
 \end{align*}
 
-Matrix multiplication may be expressed in a programmatic form accordingly:
+Matrix multiplication may be expressed in a programmatic form as such:
 \texttt{C[i][j] = sum zipWith (op*) (row A i) (col B j)}
 
-This can be implemented in two possible ways.
-We could approach things purely in hardware, issue a command containing the
-locations and dimensions of each of the matrices, and expect the hardware to
-write an output matrix to our memory.
-Alternatively, we may take advantage of the existence of firmware. It is
-possible that 
+% TODO: Internal memory
 
+% TODO: Register-file, vs Vector#(Reg#())
 Our peripheral contains a RegFile of internal memory which is memory mapped to
 the CPU via an AXI4 bus slave interface.
 
+\subsection{Design Decisions}
+\subsubsection{Hybrid/Monolithic}
+% TODO: Citations - argue around, base ideas off.
+We propose two potential ways of implementing matrix multiplication. We could
+pursue a monolithic approach and implement the entire multiplication purely in
+hardware. Alternatively, we could perform a hybrid approach, where each element
+of \texttt{C[i][j]} may be computed by issuing a separate command to the
+accelerator. This is proposed under the idea that the creation and scheduling of
+instructions for each element in the final matrix, is more easily performed
+within the firmware of the embedded processor.
+
+\subsubsection{Memory Regions}
+We split our accelerator 
 \begin{table}
   \centering
 \begin{tabular}{lll}
@@ -325,22 +399,42 @@ the CPU via an AXI4 bus slave interface.
 \subsubsection{Status}
 The first byte of our status memory is to monitor, and control execution from
 the accelerator.
+
+\subsubsection{Control}
 We write our control command/instruction to the control memory bank. We then set out
 execute status bit, and the accelerator should run the appropriate command.
 
-\subsubsection{Control}
-
 \subsubsection{Memory}
 
-\subsection{Design Decisions}
-\subsubsection{Hybrid/Monolithic}
 
 \subsection{Command Issuing \& Decoding}
-% Endianness (BSV)
-% Struct padding
+One of the principal problems encountered between issuing a command containing
+a struct of multi-byte data to the accelerator from the embedded processor. By
+default, the unsigned integer type in BSV is in big endian form, while the
+embedded core stores data in little endian form. The motivation for embedded
+processors to use little endian byte ordering is to ensure that the address of a
+variable is unchanged when a typecast is performed. This saves processor cycles,
+and results in improved performance. Variables are automatically
+truncated/extended when an appropriate typecast is made. \\
 
-\subsection{DP Unit Design} 
-BSV contains a FloatingPoint library, which extends the Server module.
+We write a C struct into our control region of memory. In order for the data
+within the instructions to be interpreted correctly in hardware, the
+byte-ordering needs to be reversed. BSV provides us with a systematic and clean
+way of doing this within hardware. The alternative would be to reverse the bytes
+in software, and therefore lose cycles. \\
+
+% TODO: Link to:
+% https://github.com/jeffreycassidy/BlueLink/blob/master/Core/Endianness.bsv 
+
+% TODO: C padding - citations
+Naturally, C structures are padded and aligned, where 4-byte variables are
+aligned to the nearest 4-bytes. Previous variables are extended in size in
+accordance to this padding. To ensure cleanliness 
+
+\subsection{Functional Unit Design}
+BSV contains a FloatingPoint library. Modules already exist for addition and
+multiplication which extend the Server module. 
+
 We can put a request, and after some number of clock cycles, get a response.
 
 \subsubsection{Fused Multiply-Accumulate}
@@ -348,15 +442,14 @@ We can put a request, and after some number of clock cycles, get a response.
 
 \subsubsection{Pipelined Multiplication with Addition}
 \subsubsection{Pipelined Multiplication \& Pairwise Addition}
+\subsubsection{Predicted Performance}
 % Unit Design: TODO: Include diagram
 
 % Unit: Memory Parallelism
 % Unit: Memory Banking:
 
-\subsection{DP Unit Parallelism}
+\subsection{Multiple Functional Units}
 % TODO: Naive. READ/WRITE ports
-% \subsection{Why bluespec?}
-% \subsection{Bluespec - Polymorphism/Configurable hardware}
 
 
 % TODO: Evaluation of results: ~10x faster
@@ -387,7 +480,7 @@ Typically, BRAM, has 2 read ports, and 1 write port.
 % TODO: Cycle count / byte read in IO memory (when bypassing the cache!?)
 % TODO: CACHE R/W speed!?
 
-\section{Commmunication Bottleneck}
+\section{Commmunication \& Memory Bottleneck}
 \subsection{Protocol efficiency/optimisation}
 % Analysis of struct packing
 % Attribute ((packed))
@@ -412,6 +505,7 @@ Typically, BRAM, has 2 read ports, and 1 write port.
 % In hardware
 % Accelerator buffer/program counter. (Internal stack)
 
+\subsection{64-bit}
 \begin{table}
   \centering
   \begin{tabular}{r|rr}

@@ -362,7 +362,7 @@ module mkAccel(Accel_IFC#(banks));
    Vector#(banks, Reg#(FSingle)) server_result <- replicateM(mkReg(0));
 
    // TODO: somehow make use of Connectables!?
-   rule rl_decode_command (!control_is_busy());
+   rule rl_decode_command;
       f_write_exec.deq;
       Bit#(160) command = 0;
       Vector#(20, Bit#(8)) cmd_vec;
@@ -371,7 +371,6 @@ module mkAccel(Accel_IFC#(banks));
       command = pack(reverse(cmd_vec)); // Swap byte order
       // TODO: Decode single command
       MatUnitArgs args = unpack(truncate(command)); // Reverse endian-ness
-      //$display("ENQ command: ", fshow(unpackle(args.ptr_a.addr)));
       $display("%3d: COMMAND RECEIVED: %h", $time, pack(args));
 
       let unit_id = unpackle(args.unit);
@@ -430,14 +429,8 @@ module mkAccel(Accel_IFC#(banks));
       Vector#(16, Bool) sb = replicate(False);
       for(Integer i=0; i<valueOf(banks); i=i+1)
          sb[i] = server_busy[i];
-      Bit#(8) done_bits = truncate(pack(sd));
-      Bit#(8) busy_bits = truncate(pack(sb));
-
-      // Bit#(64) t <- $time;
-      // if(t >= 213491 && t <= 213520) begin
-         
-      //    $display("%3d: DEBUG: DONE: %b BUSY: %b CONTROL: %b", $time, done_bits, busy_bits, rgv_control[0]);
-      // end
+      Bit#(16) done_bits = pack(sd);
+      Bit#(16) busy_bits = pack(sb);
 
       let f = findIndex(id, sd);
       if(f matches tagged Valid .idx) begin

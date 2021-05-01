@@ -17,7 +17,8 @@ BSC_COMPILATION_FLAGS += \
 	-D SHIFT_BARREL    \
 	-D MULT_SYNTH    \
 	-D Near_Mem_Caches    \
-	-D FABRIC64
+	-D FABRIC64 \
+	-show-schedule
 
 TEST ?= rv32ui-p-add
 

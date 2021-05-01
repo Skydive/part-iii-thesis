@@ -9,9 +9,15 @@
 
 // Fake heap!
 #define ACCEL_STAT_ADDR mkACCEL_ADDR(0)
-#define ACCEL_BUSY_ADDR mkACCEL_ADDR(1)
-#define ACCEL_CMD_ADDR mkACCEL_ADDR(32)
-#define ACCEL_DATA_ADDR mkACCEL_ADDR(64)
+#define ACCEL_BUSY_ADDR mkACCEL_ADDR(4)
+#define ACCEL_CMD_ADDR mkACCEL_ADDR(32*4)
+#define ACCEL_DATA_ADDR mkACCEL_ADDR(64*4)
+
+/* #define ACCEL_STAT_ADDR mkACCEL_ADDR(0,4) */
+/* #define ACCEL_BUSY_ADDR mkACCEL_ADDR(1,4) */
+/* #define ACCEL_CMD_ADDR mkACCEL_ADDR(0x80,1) */
+/* #define ACCEL_DATA_ADDR mkACCEL_ADDR(0x580,1) */
+
 
 #define ACCEL_STAT_EXEC_BIT 0
 #define ACCEL_STAT_BUSY_BIT 1
@@ -64,8 +70,8 @@ void accel_exec_command() {
 }
 
 void accel_load_command(struct MatUnitArgs args) {
-  volatile struct MatUnitArgs* base = (volatile struct MatUnitArgs*)ACCEL_CMD_ADDR;
-  *base = args; // YAY C99 struct assignment!
+  //volatile struct MatUnitArgs* base = (volatile struct MatUnitArgs*)ACCEL_CMD_ADDR;
+  //*base = args; // YAY C99 struct assignment!
   //printf("Size: %d\n", sizeof(struct MatUnitArgs));
   memcpy((void*)ACCEL_CMD_ADDR, &args, sizeof(struct MatUnitArgs));
 }
