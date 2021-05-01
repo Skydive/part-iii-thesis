@@ -179,6 +179,9 @@ spans multiple clock cycles.
 
 \section{Testbench Setup}
 \subsection{Risc-V Assembly \& Firmware Structure}
+The firmware which runs on an embedded Risc-V core is significantly different to
+code that is ran on a standard computer. 
+
 \subsubsection{Linker File}
 % TODO: Avoiding stack overflow
 % TODO: 
@@ -188,33 +191,35 @@ spans multiple clock cycles.
 The latest commit of the Piccolo processor, at the time of development, (), had
 a type error in the floating point unit. 
 
-We must enter, FPU.bsv and FBox\_Core.bsv and prefix the RoundMode type with FloatingPoint::RoundMode.
+The compiler experiences ambiguity between the RoundMode's declared in. We must enter, FPU.bsv and FBox\_Core.bsv and prefix the RoundMode type with FloatingPoint::RoundMode.
 
 % NOTE: Compile log
-% compiling Piccolo/src_Core/CPU/FPU.bsv
-% Warning: Unknown position: (S0080)
-% 1 warnings were suppressed.
-% Error: "Piccolo/src_Core/CPU/FPU.bsv", line 52, column 30: (T0080)
-% Type error at the use of the following function:
-% mkFloatingPointDivider
+\begin{verbatim}
+compiling Piccolo/src_Core/CPU/FPU.bsv
+Warning: Unknown position: (S0080)
+1 warnings were suppressed.
+Error: "Piccolo/src_Core/CPU/FPU.bsv", line 52, column 30: (T0080)
+Type error at the use of the following function:
+mkFloatingPointDivider
 
-% The expected return type of the function:
-% g__#(ClientServer::Server#(Tuple3#(FPU::FSingle, FPU::FSingle, ISA_Decls::RoundMode), FPU::FpuR))
+The expected return type of the function:
+g__#(ClientServer::Server#(Tuple3#(FPU::FSingle, FPU::FSingle, ISA_Decls::RoundMode), FPU::FpuR))
 
-% The return type according to the use:
-% c__#(ClientServer::Server#(Tuple3#(FloatingPoint::FloatingPoint#(d__, e__),
-% FloatingPoint::FloatingPoint#(d__, e__),
-% FloatingPoint::RoundMode),
-% Tuple2#(FloatingPoint::FloatingPoint#(d__, e__), FloatingPoint::Exception)))
-
+The return type according to the use:
+c__#(ClientServer::Server#(Tuple3#(FloatingPoint::FloatingPoint#(d__, e__),
+FloatingPoint::FloatingPoint#(d__, e__),
+FloatingPoint::RoundMode),
+Tuple2#(FloatingPoint::FloatingPoint#(d__, e__), FloatingPoint::Exception)))
+\end{verbatim}
 
 \subsubsection{mstatus CSR}
 Once the FPU is successfully compiled, and the processor is compiled with
 floating point support, the processor will trap and throw an exception when any
 floating point instruction is executed. When a processor exception takes place,
 the processor moves the program counter back to the start of the boot ROM, this
-is observed as infinite looping, where code after the first floating point
-instruction will never execute.
+is observed in the simulation output as an infinite loop, where code after the
+first floating point instruction will never execute, as the program will
+constantly restart.
 
 With an open source processor, we have the ability to inspect and modify the source code,
 and recompile the processor. We can instruct the CPU to print the internal state
