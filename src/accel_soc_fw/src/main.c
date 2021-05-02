@@ -54,7 +54,7 @@ void init_stack() {
 // Overhead (CPC): 4994
 
 
-#define ACCEL_UNITS 16
+#define ACCEL_UNITS 8
 // Unbuffered: Firmware scheduling:
 // (GCC 9.2.0 riscv64-unknown-elf -O2 -fno-inline -march=rv32imafc -mabi=ilp32f)
 // Sequential: ?/21383
@@ -197,48 +197,56 @@ void mat_test() {
 
 }
 
-void __attribute__((noinline, section(".dummy_section"))) func_test() {
-  print("Meme!\n");
-}
-
-extern unsigned char dummysec_start[];
-extern unsigned char dummysec_end[];
 void main() {
-  //print("Hello, world!\n");
-  //mstatus_init();
-  //init_stack();
+  print("Hello, world!\n");
+  mstatus_init();
+  init_stack();
 
-  //accel_buffered_test();
+  uint32_t time0, time1;
+  uint16_t busy_bits;
+  float* ptr_a_addr = (float*)accel_malloc(sizeof(stack_mat_a)/sizeof(float));
+  float* ptr_b_addr = (float*)accel_malloc(sizeof(stack_mat_b)/sizeof(float));
+  float* ptr_c_addr = (float*)accel_malloc(4);
 
-  // GOTO TEST!
+  time0 = read_csr_safe(cycle);
+  /* for(int i=0; i<sizeof(stack_mat_a)/sizeof(stack_mat_a[0]); i++) */
+  /*   ptr_a_addr[i] = stack_mat_a[i]; */
+  /* for(int i=0; i<sizeof(stack_mat_b)/sizeof(stack_mat_b[0]); i++) */
+  /*   ptr_b_addr[i] = stack_mat_b[i]; */
+  memcpy((void*)ptr_a_addr, &stack_mat_a, sizeof(stack_mat_a));
+  memcpy((void*)ptr_b_addr, &stack_mat_b, sizeof(stack_mat_b));
+  memset((void*)ptr_c_addr, 0, 4*4*sizeof(float));
+  time1 = read_csr_safe(cycle);
+  printf("Copy cycles: %d\n", time1-time0);
 
-  /* asm ("addi sp,sp,-4"); */
-  /* uint32_t label_addr = &&label_test; */
-  /* printf("Label Address: %X\n", label_addr); */
+  volatile struct MatUnitArgs_32B *cmd_region = (struct MatUnitArgs_32B*)ACCEL_HW_CMD_ADDR;
+  println("Buffering command arguments:");
+  time0 = read_csr_safe(cycle);
+  struct MatUnitArgs_32B args;
+  for(int i=0; i<16; i++) {
+    uint8_t count = 64;
+    uint8_t cw = 4;
+    uint8_t x = i % cw;
+    uint8_t y = i / cw;
+    args.unit = i%ACCEL_UNITS;
+    args.count = count;
+    args.ptr_a.addr = ptr_a_addr; args.ptr_a.offset = count*y; args.ptr_a.stride = 1;
+    args.ptr_b.addr = ptr_b_addr; args.ptr_b.offset = x;       args.ptr_b.stride = cw;
+    args.ptr_c.addr = ptr_c_addr+i;
+    cmd_region[i] = args;
+  }
+  memset(&cmd_region[16], 0, sizeof(struct MatUnitArgs_32B));
+  time1 = read_csr_safe(cycle);
+  printf("Buffer cycles: %d\n", time1-time0);
 
-  uint32_t func_size = dummysec_end-dummysec_start;
-  /* printf("Func Size: 0x%X\n", func_size); */
-  /* for(int i=0; i<func_size+4>>2; i++){ */
-  /*   uint32_t* ft = (uint32_t*)&func_test + i; */
-  /*   printf("\t%X - %X\n", ft, *ft); */
-  /* } */
-  memcpy((void*)(ACCEL_STAT_ADDR+8), &func_test, func_size);
-  /* printf("Func Size: 0x%X\n", func_size); */
-  /* for(int i=0; i<func_size+4>>2; i++){ */
-  /*   uint32_t* ft = (uint32_t*)(ACCEL_STAT_ADDR+8) + i; */
-  /*   printf("\t%X - %X\n", ft, *ft); */
-  /* } */
-  /* // Move func_test TO stupid SoC chip! */
-  //asm volatile ("call % " :: "r"(&func_test));
+  time0 = read_csr_safe(cycle);
+  accel_exec_command();
+  while(busy_bits = *(uint16_t volatile*)ACCEL_BUSY_ADDR != 0);
+  time1 = read_csr_safe(cycle);
 
-  //((void (*)(void))0x80010CB8)();
-  ((void (*)(void))0xC0002008)();
-  //goto *(void*)(ACCEL_STAT_ADDR+8);
-
-  print("Shitty label lol rip");
-
-  //mat_test();
+  printf("Time taken: %d\n", time1-time0);
+  for(int i=0; i<16; i++)
+    printf("0x%X -> %2.f\n", &ptr_c_addr[i], ptr_c_addr[i]);
 }
-
 void irqCallback() {
 }

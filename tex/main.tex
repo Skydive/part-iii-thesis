@@ -221,9 +221,13 @@ is observed in the simulation output as an infinite loop, where code after the
 first floating point instruction will never execute, as the program will
 constantly restart.
 
-With an open source processor, we have the ability to inspect and modify the source code,
-and recompile the processor. We can instruct the CPU to print the internal state
-when a trap occurs.
+With an open source processor, we have the ability to inspect and modify the
+source code, and recompile the processor. We can instruct the CPU to print its
+internal state when a trap occurs, notably: information about the trap, and the
+type of exception that has been thrown. With this information, we can look
+through the codebase of the Piccolo processor, and identify what is causing the
+processor to fail to execute floating point instructions, despite 
+
 
 % CPU.bsv
 % TODO: BSV
@@ -533,6 +537,54 @@ Typically, BRAM, has 2 read ports, and 1 write port.
 \subsection{Firmware Stalling/Interrupts}
 
 \subsection{Instruction jumping}
+
+\begin{verbatim}
+// MMIO PC
+void __attribute__((noinline, section(".dummy_section"))) func_test() {
+  print("Meme!\n");
+}
+
+// Linker script modified
+extern unsigned char dummysec_start[];
+extern unsigned char dummysec_end[];
+void main() {
+  //print("Hello, world!\n");
+  //mstatus_init();
+  //init_stack();
+
+  //accel_buffered_test();
+
+  // GOTO TEST!
+
+  /* asm ("addi sp,sp,-4"); */
+  /* uint32_t label_addr = &&label_test; */
+  /* printf("Label Address: %X\n", label_addr); */
+
+  uint32_t func_size = dummysec_end-dummysec_start;
+  /* printf("Func Size: 0x%X\n", func_size); */
+  /* for(int i=0; i<func_size+4>>2; i++){ */
+  /*   uint32_t* ft = (uint32_t*)&func_test + i; */
+  /*   printf("\t%X - %X\n", ft, *ft); */
+  /* } */
+  memcpy((void*)(ACCEL_STAT_ADDR+8), &func_test, func_size);
+  /* printf("Func Size: 0x%X\n", func_size); */
+  /* for(int i=0; i<func_size+4>>2; i++){ */
+  /*   uint32_t* ft = (uint32_t*)(ACCEL_STAT_ADDR+8) + i; */
+  /*   printf("\t%X - %X\n", ft, *ft); */
+  /* } */
+  /* // Move func_test TO stupid SoC chip! */
+  //asm volatile ("call % " :: "r"(&func_test));
+
+  ((void (*)(void))0x80010CB8)();
+  ((void (*)(void))0xC0002008)(); // Processor stall indefinitely.
+  print("Test");
+}
+
+func_test address: 80010C98
+Meme!
+\end{verbatim}
+
+
 
 
 \chapter{Evaluation} 

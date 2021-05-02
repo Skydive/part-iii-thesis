@@ -61,10 +61,10 @@ SECTIONS {
     *(.srodata.cst4)
     *(.srodata.cst2)
     *(.srodata .srodata.*)
-    . = ALIGN(8);
-    dummysec_start = .;
-    *(.dummy_section)
-    dummysec_end = .;
+  /*   . = ALIGN(8); */
+  /*   dummysec_start = .; */
+  /*   *(.dummy_section) */
+  /*   dummysec_end = .; */
   } > RAM
 
   .bss (NOLOAD) : {

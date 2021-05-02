@@ -13,19 +13,18 @@
 #define ACCEL_CMD_ADDR mkACCEL_ADDR(32*4)
 #define ACCEL_DATA_ADDR mkACCEL_ADDR(64*4)
 
-/* #define ACCEL_STAT_ADDR mkACCEL_ADDR(0,4) */
-/* #define ACCEL_BUSY_ADDR mkACCEL_ADDR(1,4) */
-/* #define ACCEL_CMD_ADDR mkACCEL_ADDR(0x80,1) */
-/* #define ACCEL_DATA_ADDR mkACCEL_ADDR(0x580,1) */
-
+#define ACCEL_HW_STAT_ADDR mkACCEL_ADDR(0)
+#define ACCEL_HW_BUSY_ADDR mkACCEL_ADDR(4)
+#define ACCEL_HW_CMD_ADDR mkACCEL_ADDR(0x80)
+#define ACCEL_HW_DATA_ADDR mkACCEL_ADDR(0x480)
 
 #define ACCEL_STAT_EXEC_BIT 0
 #define ACCEL_STAT_BUSY_BIT 1
 
 uintptr_t malloc_ptr = 0;
 uintptr_t accel_malloc(int size) {
-  uintptr_t offset = ACCEL_DATA_ADDR;
-  volatile uintptr_t p = offset+malloc_ptr;
+  uintptr_t offset = ACCEL_HW_DATA_ADDR;
+  uintptr_t p = offset+malloc_ptr;
   malloc_ptr += size*sizeof(uintptr_t);
   return p;
 }
@@ -52,6 +51,17 @@ struct MatUnitArgs {
   struct MatUnitPtr ptr_b;
   struct MatUnitPtr ptr_c;
 } __attribute__((packed));
+
+struct MatUnitArgs_32B {
+  uint8_t unit;
+  uint8_t count;
+  struct MatUnitPtr ptr_a;
+  struct MatUnitPtr ptr_b;
+  struct MatUnitPtr ptr_c; // 20B
+  char pad[12]; // 12B
+} __attribute__((packed));
+
+
 void print_mat_unit_args(struct MatUnitArgs args) {
   printf("MatUnitArgs { unit: %d, count: %d, ptr_a: ", args.unit, args.count); print_mat_unit_ptr(args.ptr_a);
   printf(", ptr_b: "); print_mat_unit_ptr(args.ptr_b);
