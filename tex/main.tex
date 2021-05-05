@@ -31,6 +31,8 @@
 \usepackage{amsmath,amssymb}
 \usepackage{fancyvrb,listings}
 
+\usepackage[a4paper, margin=1in]{geometry}
+
 \usepackage{tikz}
 \usetikzlibrary{shapes,arrows}
 
@@ -75,6 +77,11 @@
 \pagenumbering{arabic} 
 \setcounter{page}{1} 
 
+% NOTE: Clear motivation - justify the benefits of success
+% NOTE: Contextualise what i'm building
+% NOTE: Analysis of requirements and justified & documented use of tools!
+
+
 % Work on Story
 % Embedded Devices
 % Common for embedded devices to have their own acclerators
@@ -82,26 +89,88 @@
 
 
 % What are our main contributions:
-% - Improved upon/got working (FPU) test bench, and
-% firmware for rapid prototyping and simulations
-% of a Risc-V based CPU
-% Achieved an approx 5x speed-up - 
+% Improved upon/got working (FPU) testbench (verilator) for rapid prototyping and simulations
+% Wrote functioning bare-metal firmware for a RiscV CPU
 
+% Accelerator: VLIW/Superscalar execution
+
+% Bluespec: Customisable number of functional units, varying silicon area.
+% In the best case, obtained an approx 10x speed-up through hardware buffered
+% commands. 
 
 
 \chapter{Background} 
 \section{Risc-V Instruction Set}
+Risc-V is an open standard instruction set architecture (ISA). It is provided
+under open source licenses, where anybody may use the ISA, with no restrictions
+over the use of intellectual property (IP). In contrast the widely-used,
+especially in embedded devices, ARM ISA, is proprietary. If the ARM ISA is used
+for commercial purposes, the company expects a licencing deal to be made and
+royalties to be paid. Licencing deals typically cost millions of dollars and can
+take months to negotiate. These IP restrictions hinder the process of academic
+research, and significantly raise the barrier of entry for processor design,
+where only large companies like Qualcomm can compete.
+
+As such, there is no incentive for processor designs to be made open source.
+Obtaining the source code of most ARM processors is both difficult and
+impractical due to these strict and costly licencing requirements.
+
+% TODO: Risc-V cite: https://www2.eecs.berkeley.edu/Pubs/TechRpts/2014/EECS-2014-146.html 
+Since the publication of the Risc-V ISA, a variety of different open source
+processors have been designed that are based on the open standard Risc-V ISA.
+The source code of these processors is publically available, with a range of
+different designs available on GitHub.
+
+Collaboration and open source processor
+design has a range of additional benefits in architectural security. This is of
+particular relevance in the light of severe hardware-level vulnerabilities found
+in the majority of ARM and x86\_64 processors in production, namely Spectre, and
+Meltdown. With processor designers and manufacturers paying less attention to
+verifying the security of their devices whilst competing with each other to
+maximise processor throughput. Open source processor development allows for
+processor designs to be verified by a community of different organisations, and
+By basing our work on an open source processor in the development of our
+peripheral, we benefit substantially from these security considerations.
+
+When designing a peripheral, it is vital to possess an understanding of the
+processor that it is connected to. Using an open source processor gives us
+greater freedom, allowing us to pry into the internals, and analyse the
+specifics of processor behaviour if things behave in an unexpected manner.
+
 
 \section{Simulating Hardware}
 % Risc-V
-% Spike
-% Verilator
+The fastest way to verify the design of hardware is through simulations.
+\subsection{Verilator}
+Verilator is a piece of open source software that compiles Verilog into C++. A
+testbench can then be created, where the generated C++ class representing the
+top-level module in hardware, can be stepped forwards in time with the clock
+toggled from low to high accordingly, and signals propagated through simulated
+hardware accordingly.
 
-\section{Synthesis of Hardware}
+% https://www.veripool.org/papers/Verilator_Fast_Free_Me_DVClub10_pres.pdf
+% TODO: Include example testbench
+
+
+%\subsection{Bluesim}
+
+% Spike
+
+\section{FPGAs/Synthesis}
+% TODO: Talk about modern processors structure - Internal FPGA - motivations
+% Relate to Intel Acquisition of Altera --- (Recent) AMD Acquisition of Xilinx
+% Looks inc
+
+% TODO: Silicon surface? Embedded systems. - Which do I pick!?
+%  Mainly ^^ 
+
+% TODO: Toolchains
 % Xilinx Vivado
 % Symbiflow
 
 \section{ChiselHDL \& SpinalHDL}
+% Features --- ChiselHDL + Risc-V
+
 \section{Bluespec Verilog}
 % Features
 % Example code / Comparisons
@@ -109,21 +178,51 @@
 
 \chapter{Related Work} 
 \section{Open Source Hardware}
-% Processors:
-% BlueVec
+
+\section{BlueVec}
 % https://www.cl.cam.ac.uk/~swm11/papers/FPL2013-BlueVec.pdf
 
-% Rocket RoCC
+% TODO: BlueVec - Literature Review
+% TODO: ZynqNet - Literature Review
+% Rocket RoCC - Literature Review
+% Google TPU? & Nvidia GPUs? --- Look into
+
+
+% NOTE: General argument --- elaborate upon motivations
+% NOTE: BlueVec --- Nios. Custom instructions ---> Loss of interopability
+% NOTE: Are there truly multiple functional units? Instructions STALL the cpu.
+% NOTE: Unadjustable silicon consumption --- less control!
+
+% NOTE: ZynqNet --- too SPECIFIC, NN architecture needed beforehand.
+
+
 \section{}
-% Google TPU?
-% Nvidia GPUs?!
 
 % Bluespec Verilog
 
-% SIMD/
+% SIMD
+
+
+% TODO: image of SoC
+% CPU/AXI4 e.t.c.
+% Piccolo
+% VexRiscV
+% Rocket
+% SiFive Freedom E310
+\subsection{ARM Cortex M0/M3}
+\subsection{Freedom E310}
+\subsection{VexRiscV}
 
 \chapter{Design and Implementation}
-% Design decisions
+
+% NOTE: Main contribution to (the field?)
+% NOTE: Original implementation
+% NOTE: Somehow demonstrate - extra-curricular reading?!
+% NOTE: Compare the design to BlueVec!?
+
+% NOTE: Challenging goals - substantial deliverables
+
+% NOTE: Design decisions
 
 % Test bench --- functional
 % Floating point unit (mstatus csr)
@@ -141,8 +240,6 @@
 % Unit duplication - scheduling
 % Copy cost
 
-% endianness & packing
-
 % ZipReduceUnitServer - improvements + bench
 % Unit duplication - special memory & wire connections!
 %
@@ -152,18 +249,10 @@
 
 
 \section{SoC Design}
-% TODO: image of SoC
-% CPU/AXI4 e.t.c.
-% Piccolo
-% VexRiscV
-% Rocket
-% SiFive Freedom E310
-\subsection{ARM Cortex M0/M3}
-\subsection{Freedom E500}
-\subsection{VexRiscV}
 \subsection{Piccolo}
 
 \subsection{AXI4 Protocol}
+% TODO: OR IN Test Peripheral (AXI4)
 % TODO: Background info/filler and origin
 \texttt{wstrb}
 % TODO: How is memory read/written from
@@ -180,16 +269,66 @@ spans multiple clock cycles.
 \section{Testbench Setup}
 \subsection{Risc-V Assembly \& Firmware Structure}
 The firmware which runs on an embedded Risc-V core is significantly different to
-code that is ran on a standard computer. 
+software that runs on top of an operating system. In order to compile C and
+assembly language into machine code, we make use of the GNU compiler collection
+(GCC).
+
+The naming convention for compilers is \texttt{arch-vendor-os-libc-gcc}. The
+standard, desktop version of gcc \texttt{x86\_64-pc-linux-gnu-gcc} is not
+capable of producing Risc-V machine code. Moreover, it is targetted at the linux
+operating system, and uses the linux GNU LibC and supports linux system calls.
+In order to compile our Risc-V assembly and C into Risc-V machine code, we must
+use a cross-compiler. We build a compiler on our host x86\_64 system to run on
+an x86\_64 machine, that is capable of producing a Risc-V ELF binary.
+
+The \texttt{riscv64-unknown-elf-gcc} compiler is designed to produce a
+bare-metal Risc-V binary. Instead of using GNU LibC, the C library used is
+Newlib. Newlib is C library that is designed for embedded systems. With Newlib,
+we now have access to the standard C functions for IO \texttt{printf}, and math
+functions, such as \texttt{pow}, and \texttt{sqrt}. The relevant machine code
+for these functions are statically linked, and the code within our final binary
+ELF is entirely self-contained. This can be seen in the section layout of our
+produced ELF file.
+
+Relevant sections of our final ELF file. We have a stack,  
+\tiny
+\begin{verbatim}
+Section ._stack         : addr         800000f8 to addr         80010100; size 0x   10008 (= 65544) bytes
+Section .text.pow       : addr         80013444 to addr         8001352e; size 0x      ea (= 234) bytes
+Section .text.__ieee754_pow: addr         8001352e to addr         80013fee; size 0x     ac0 (= 2752) bytes
+Section .text.__ieee754_sqrt: addr         80013fee to addr         800141b4; size 0x     1c6 (= 454) bytes
+Section .text.memcpy    : addr         8001707c to addr         80017164; size 0x      e8 (= 232) bytes
+\end{verbatim}
+\normalsize
+
+
+
+\subsubsection{UART/Serial Output}
+The most important firmware debugging feature to get working is the ability to
+print to console. The Piccolo techbench SoC kindly contains a NS16550 UART
+peripheral that is connected to 
+
+This UART peripheral is memory mapped. 
+
+\subsubsection{Printf}
+
+\subsubsection{LibC --- NewLib}
+
 
 \subsubsection{Linker File}
+
+One of the first problems encountered was a CPU trap due to a stack overflow.
+The size of the stack may be modified in the linker file. The embeddedartistry
+printf implementation that avoids using heap memory stores a considerable amount
+of data on the stack. As such, the stack needs to be modified.   
 % TODO: Avoiding stack overflow
 % TODO: 
+
 
 \subsection{Floating Point Unit}
 \subsubsection{Fixing Piccolo FPU typeerrors}
 The latest commit of the Piccolo processor, at the time of development, (), had
-a type error in the floating point unit. 
+a type error in the floating point unit (FPU). 
 
 The compiler experiences ambiguity between the RoundMode's declared in. We must enter, FPU.bsv and FBox\_Core.bsv and prefix the RoundMode type with FloatingPoint::RoundMode.
 
@@ -226,9 +365,20 @@ source code, and recompile the processor. We can instruct the CPU to print its
 internal state when a trap occurs, notably: information about the trap, and the
 type of exception that has been thrown. With this information, we can look
 through the codebase of the Piccolo processor, and identify what is causing the
-processor to fail to execute floating point instructions, despite 
+processor to fail to execute floating point instructions, despite the fact that
+the FPU module is included within the processor.
 
-
+We enter \texttt{CPU.bsv}, and modify the rule responsible for modifying the
+behaviour of the CPU when the trap condition is met. We display additional
+information about the trap, and instruct the simulation to end when a trap
+occurs. This is where BluespecVerilog is incredibly useful. The
+\texttt{Trap\_Info} structure within BSV contains the \texttt{FShow} typeclass.
+This contains information for printing the structure in a clean and easy-to-read
+way, specifically for debugging purposes. Additionally, the
+\texttt{fshow\_trap\_Exc\_Code} function will print the human-readable name of
+the exception code enumeration. As such, we do not need to constantly switch
+between looking at our program output, and figuring out what the output
+represents in our source code files.
 % CPU.bsv
 % TODO: BSV
 \begin{lstlisting}[language=C,style=customc]
@@ -242,6 +392,11 @@ processor to fail to execute floating point instructions, despite
       $finish(0);
    endrule: rl_trap
 \end{lstlisting}
+
+The information we obtain about our processor trap can be matched to the
+specific address in assembly code that causes the error. In this particular
+case, the \texttt{flw} instruction is responsible for triggering an
+\texttt{ILLEGAL\_INSTRUCTION} exception.
 \begin{lstlisting}[language=C,style=customc]
   float a = 1.0f;
   // Assembly:
@@ -253,10 +408,13 @@ processor to fail to execute floating point instructions, despite
   // Exc_Code: ILLEGAL_INSTRUCTION
 \end{lstlisting}
 
-% EX_ALU_functions.bsv --> fv_LD
-We observe that all FP ALU functions check the fs bit of the CSR register.
-This can be seen from the ALU fv\_LD function that runs when the flw instruction
-is executed.
+We look through our processor code, and identify the locations where this
+particular exception code is set. We observe that it is set in the
+\texttt{alu\_outputs\_base} struct within \texttt{EX\_ALU\_functions.bsv}. This
+struct is copied within the ALU function that corresponds to loading data into
+registers, \texttt{fv\_LD}. If the \texttt{flw} instruction is called, a
+particular bit on the \texttt{mstatus} control-status register (CSR) is read. In
+our case, the fs bit is found to be disabled.
 \begin{lstlisting}[language=C,style=customc]
 function ALU_Outputs fv_LD (ALU_Inputs inputs);
    [...]
@@ -275,11 +433,42 @@ function ALU_Outputs fv_LD (ALU_Inputs inputs);
 endfunction
 \end{lstlisting}
 
-We later learn, that this is an intentional design descision as per the Risc-V
-specification, Chapter 3, Section 1.11. The fs bit on the mstatus CSR must be
+Compared to debugging standard Verilog, the structure of Bluespec Verilog
+provides us with a greater ability to debug, and identify relevant codepaths.
+
+We further observe that all FP ALU functions check the fs bit of the CSR register.
+This can be seen from the ALU fv\_LD function that runs when the flw instruction
+is executed. We later learn, that this is an intentional design descision as per
+the Risc-V specification, Chapter 3, Section 1.11. The fs bit on the mstatus CSR must be
 set in order for floating-point instructions to be enabled. We can see how this
 is done in bare-metal C, by looking at the source code for the Spike Risc-V
-proxy kernel.
+proxy kernel, we implement the relevant parts of this code within our firmware
+initialisation sequence. Once implemented, we observe that floating point
+instructions operate correctly.
+% https://github.com/riscv/riscv-pk/blob/master/machine/minit.c
+% https://github.com/riscv/riscv-pk/blob/master/machine/encoding.h 
+\begin{lstlisting}[language=C,style=customc]
+
+// encoding.h
+#define MSTATUS_FS          0x00006000
+#define write_csr(reg, val) ({ \
+  asm volatile ("csrw " #reg ", %0" :: "rK"(val)); })
+
+// minit.c
+static void mstatus_init()
+{
+  uintptr_t mstatus = 0;
+  // Enable FPU
+  if (supports_extension('F'))
+    mstatus |= MSTATUS_FS;
+  [...]
+  write_csr(mstatus, mstatus);
+  [...]
+}
+
+\end{lstlisting}
+
+
 
 % TODO: Citation
 % “The RISC-V Instruction Set Manual, Volume II: Privileged Architecture,
@@ -294,6 +483,104 @@ minimum functioning unit. In order for our embedded processor to communicate
 with with our peripheral, we make use of memory-mapped I/O. We map a small
 unoccupied memory address range to our peripheral, and give it a small internal
 region of memory where 4-byte integers can be read/written from.
+
+The AXI4 protocol is designed by ARM, and is royalty-free, where a licence is
+not required for academic or commercial use.
+
+% https://forums.xilinx.com/t5/Design-and-Debug-Techniques-Blog/AXI-Basics-1-Introduction-to-AXI/ba-p/1053914 
+
+% AXI4 RAM: https://github.com/alexforencich/verilog-axi/blob/master/rtl/axi_ram.v 
+
+% 10 wire write address channel
+% 5 wire write data channel
+% 4 wire write response channel
+% 10 wire read address channel
+% 6 wire read data channel
+% 35 wires in total, excluding clock & reset
+
+Due to the inherent complexity of the AXI4 protocol, large combinatorial finite
+state machines are required to ensure the read and
+write requests of the AXI4 bus are processed correctly. The state of over a
+dozen wires needs to be considered by the programmer on every clock cycle.
+Developing a peripheral in this manner is a challenging feat.
+
+Moreover, when a peripheral for the module is initialised, all 35 wires
+corresponding to signals in the AXI4 protocol need to be connected to the AXI4
+interconnect. All of these connections need to be manually specified. This can
+be observed in Verilog RTL as follows:
+
+
+\tiny
+\begin{verbatim}
+  mkUART uart0(.CLK(CLK),
+	       .RST_N(RST_N),
+	       .put_from_console_put(uart0$put_from_console_put),
+	       .set_addr_map_addr_base(uart0$set_addr_map_addr_base),
+	       .set_addr_map_addr_lim(uart0$set_addr_map_addr_lim),
+	       .slave_araddr(uart0$slave_araddr),
+	       .slave_arburst(uart0$slave_arburst),
+	       .slave_arcache(uart0$slave_arcache),
+	       .slave_arid(uart0$slave_arid),
+	       .slave_arlen(uart0$slave_arlen),
+	       .slave_arlock(uart0$slave_arlock),
+	       .slave_arprot(uart0$slave_arprot),
+	       .slave_arqos(uart0$slave_arqos),
+	       .slave_arregion(uart0$slave_arregion),
+	       .slave_arsize(uart0$slave_arsize),
+	       .slave_arvalid(uart0$slave_arvalid),
+	       .slave_awaddr(uart0$slave_awaddr),
+	       .slave_awburst(uart0$slave_awburst),
+	       .slave_awcache(uart0$slave_awcache),
+	       .slave_awid(uart0$slave_awid),
+	       .slave_awlen(uart0$slave_awlen),
+	       .slave_awlock(uart0$slave_awlock),
+	       .slave_awprot(uart0$slave_awprot),
+	       .slave_awqos(uart0$slave_awqos),
+	       .slave_awregion(uart0$slave_awregion),
+	       .slave_awsize(uart0$slave_awsize),
+	       .slave_awvalid(uart0$slave_awvalid),
+	       .slave_bready(uart0$slave_bready),
+	       .slave_rready(uart0$slave_rready),
+	       .slave_wdata(uart0$slave_wdata),
+	       .slave_wlast(uart0$slave_wlast),
+	       .slave_wstrb(uart0$slave_wstrb),
+	       .slave_wvalid(uart0$slave_wvalid),
+	       .EN_server_reset_request_put(uart0$EN_server_reset_request_put),
+	       .EN_server_reset_response_get(uart0$EN_server_reset_response_get),
+	       .EN_set_addr_map(uart0$EN_set_addr_map),
+	       .EN_get_to_console_get(uart0$EN_get_to_console_get),
+	       .EN_put_from_console_put(uart0$EN_put_from_console_put),
+	       .RDY_server_reset_request_put(uart0$RDY_server_reset_request_put),
+	       .RDY_server_reset_response_get(uart0$RDY_server_reset_response_get),
+	       .RDY_set_addr_map(),
+	       .slave_awready(uart0$slave_awready),
+	       .slave_wready(uart0$slave_wready),
+	       .slave_bvalid(uart0$slave_bvalid),
+	       .slave_bid(uart0$slave_bid),
+	       .slave_bresp(uart0$slave_bresp),
+	       .slave_arready(uart0$slave_arready),
+	       .slave_rvalid(uart0$slave_rvalid),
+	       .slave_rid(uart0$slave_rid),
+	       .slave_rdata(uart0$slave_rdata),
+	       .slave_rresp(uart0$slave_rresp),
+	       .slave_rlast(uart0$slave_rlast),
+	       .get_to_console_get(uart0$get_to_console_get),
+	       .RDY_get_to_console_get(uart0$RDY_get_to_console_get),
+	       .RDY_put_from_console_put(uart0$RDY_put_from_console_put),
+	       .intr(uart0$intr));
+\end{verbatim}
+\normalsize
+
+Bluespec Verilog offers a significant degree of abstraction when processing AXI4
+read and write requests, and also when attaching the peripheral to the AXI4 bus interconnect.
+
+
+
+\subsubsection{AXI4 write request}
+
+In standard verilog, one must keep track of 
+
+The AXI4 protocol 
 
 \subsubsection{AXI4 Alignment/Padding}
 This code results in the cpu trapping:
@@ -373,9 +660,21 @@ accordingly:
 Matrix multiplication may be expressed in a programmatic form as such:
 \texttt{C[i][j] = sum zipWith (op*) (row A i) (col B j)}
 
+When matrices are stored in memory, they can only be indexed with a single
+dimension. A multi-dimensional matrix is represented as a multi-dimensional
+array, this array is represented in memory in as a flattened contiguous
+one-dimensional array, with the rows of the matrix next to each other in memory.
+
+As such, we access the xth ro
+$$ \text{IndexOf} A[x][y] = x + y * width(A) $$
+
+This methodology of accessing the x, and y elements of a stored matrix is used
+throughout the accelerator.
+
 % TODO: Internal memory
 
 % TODO: Register-file, vs Vector#(Reg#())
+A contiguous region of memory, that exists within the FPGA block RAM,  
 Our peripheral contains a RegFile of internal memory which is memory mapped to
 the CPU via an AXI4 bus slave interface.
 
@@ -508,13 +807,12 @@ Typically, BRAM, has 2 read ports, and 1 write port.
 % Therefore 0-cost LE typecast <---> address calculation! (SMART)
 
 
-\subsection{Command Buffering}
+\subsection{Firmware Command Buffering}
 % In firmware
 % Stack Instruction Buffering
 % In hardware
 % Accelerator buffer/program counter. (Internal stack)
 
-\subsection{64-bit}
 \begin{table}
   \centering
   \begin{tabular}{r|rr}
@@ -533,10 +831,11 @@ Typically, BRAM, has 2 read ports, and 1 write port.
   \caption{Overhead: Buffer cycles: 723. Copy cycles: 4984}
 \end{table}
 
-
 \subsection{Firmware Stalling/Interrupts}
-
 \subsection{Instruction jumping}
+\subsection{Hardware Command Buffering}
+
+\subsection{64-bit}
 
 \begin{verbatim}
 // MMIO PC
@@ -634,8 +933,6 @@ registers
              &= 2N+27 
 \end{align*}
 
-
-
 % TODO: ARM Cortex benchmark
 
 \subsection{MNIST Neural Network: Dense Layers}
@@ -646,6 +943,12 @@ registers
 
 \chapter{Summary and Conclusions} 
 
+% NOTE: Clearly present argument and demonstrate that success criteria were
+% metal
+% NOTE: Critical thought and interpretation of results
+% NOTE: substantiate claims of success/novelty
+
+% NOTE: Reflect on lessons learnt - 
 
 \appendix
 \singlespacing

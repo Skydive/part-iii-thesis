@@ -24,16 +24,17 @@ SECTIONS {
     *crt.o(.text);
   } > RAM
 
-  ._user_heap (NOLOAD):
+/*  ._user_heap (NOLOAD):
   {
-    . = ALIGN(8);
+    . = ALIGN(7);
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
     PROVIDE ( _heap_start = .);
     . = . + _heap_size;
-    . = ALIGN(8);
+    . = ALIGN(7);
     PROVIDE ( _heap_end = .);
   } > RAM
+*/
 
 ._stack (NOLOAD):
   {
@@ -99,7 +100,7 @@ SECTIONS {
     end = .;
   } > RAM
 
-  .ctors          :
+  /*.ctors          :
   {
     . = ALIGN(4);
     _ctors_start = .;
@@ -109,6 +110,5 @@ SECTIONS {
     . = ALIGN(4);
     _ctors_end = .;
     PROVIDE ( END_OF_SW_IMAGE = . );
-  } > RAM
-
+  } > RAM */
 }

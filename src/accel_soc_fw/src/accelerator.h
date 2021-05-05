@@ -18,8 +18,6 @@
 #define ACCEL_HW_CMD_ADDR mkACCEL_ADDR(0x80)
 #define ACCEL_HW_DATA_ADDR mkACCEL_ADDR(0x480)
 
-#define ACCEL_STAT_EXEC_BIT 0
-#define ACCEL_STAT_BUSY_BIT 1
 
 uintptr_t malloc_ptr = 0;
 uintptr_t accel_malloc(int size) {

@@ -151,7 +151,6 @@ void accel_buffered_test() {
   for(int i=0; i<16; i++) {
     uint8_t x = i % cw;
     uint8_t y = i / cw;
-    args[i].unit = i%ACCEL_UNITS;
     args[i].count = count;
     args[i].ptr_a.addr = ptr_a_addr; args[i].ptr_a.offset = count*y; args[i].ptr_a.stride = 1;
     args[i].ptr_b.addr = ptr_b_addr; args[i].ptr_b.offset = x;       args[i].ptr_b.stride = cw;
