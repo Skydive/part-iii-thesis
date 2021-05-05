@@ -181,6 +181,25 @@ hardware accordingly.
 
 \section{BlueVec}
 % https://www.cl.cam.ac.uk/~swm11/papers/FPL2013-BlueVec.pdf
+The BlueVec co-processor is a vector processor aimed at accelerating neural
+network inference designed to address the \emph{memory wall}. The memory wall
+refers to the growing discrepancy between memory bandwidth and compute power. It
+is increasingly common for an accelerator system to become memory-bound, where
+the latency/clock cycle cost of moving data to and from memory may even exceed
+the reduction in compute cycles from having a custom accelerator pipeline.
+
+The BlueVec co-processor relies on the observation that in many situations where
+a custom accelerator pipeline is implemented to accelerate some computation
+through performing it in hardware, a significant improvement may be demonstrated
+by vectorizing the computation, and implementing the computation within
+software. The paper demonstrates the example of neural network inference, where
+the BlueVec co-processor is used in the context of a digit recognition problem.
+
+The BlueVec co-processor is designed in Bluespec Verilog, %
+
+% 
+The BlueVec co-processor is used, and accessed 
+
 
 % TODO: BlueVec - Literature Review
 % TODO: ZynqNet - Literature Review
