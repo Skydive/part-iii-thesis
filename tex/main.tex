@@ -4,27 +4,30 @@
 %% Currently designed for printing two-sided, but if you prefer to 
 %% print single-sided just remove ",twoside,openright" from the 
 %% \documentclass[] line below. 
-%%
-%%
-%%   SMH, May 2010. 
+%% 
+%% 
+%% SMH, May 2010. 
 
-\documentclass[a4paper,9pt]{report}
-%\documentclass[a4paper,12pt,twoside,openright]{report}
+\documentclass[a4paper,8pt]{report}
+% \documentclass[a4paper,12pt,twoside,openright]{report}
 
 
-%%
+%% 
 %% EDIT THE BELOW TO CUSTOMIZE
-%%
+%% 
 
 \def\authorname{Khalid Aleem\xspace}
 \def\authorcollege{Trinity College\xspace}
 \def\authoremail{ka476@cam.ac.uk}
-\def\dissertationtitle{A Risc-V based co-processor peripheral to accelerate CNN inference.}
+\def\dissertationtitle{Maximising throughput between a Risc-V microprocessor and
+  linear algebra co-processor.}
+%\def\dissertationtitle{A Risc-V based co-processor peripheral to accelerate CNN inference.}
 % Maximising throughput for a Risc-V linear algebra co-processor.
-\def\wordcount{14,235}
+% XXX: Project title changes: no later than 21 May 2021 16:00 
+\def\wordcount{3,860}
 
 
-%\usepackage[dvips]{epsfig,graphics} 
+% \usepackage[dvips]{epsfig,graphics} 
 \usepackage{epsfig,graphicx,verbatim,parskip,tabularx,setspace,xspace}
 
 \usepackage{booktabs}
@@ -49,6 +52,20 @@
   morekeywords={uint32_t,uint8_t}
 }
 
+\lstdefinestyle{customcpp}{
+  belowcaptionskip=1\baselineskip,
+  breaklines=true,
+  xleftmargin=\parindent,
+  language=C++,
+  showstringspaces=false,
+  basicstyle=\footnotesize\ttfamily\color{black},
+  keywordstyle=\bfseries\color{blue!40!black},
+  commentstyle=\itshape\color{purple!40!black},
+  stringstyle=\color{green!40!black},
+  morekeywords={uint64_t,uint32_t,uint8_t}
+}
+
+\input{lst-riscv.tex}
 
 %% START OF DOCUMENT
 \begin{document}
@@ -76,7 +93,7 @@
 \chapter{Introduction}
 \pagenumbering{arabic} 
 \setcounter{page}{1} 
-
+\section{Motivations}
 % NOTE: Clear motivation - justify the benefits of success
 % NOTE: Contextualise what i'm building
 % NOTE: Analysis of requirements and justified & documented use of tools!
@@ -91,6 +108,7 @@
 % What are our main contributions:
 % Improved upon/got working (FPU) testbench (verilator) for rapid prototyping and simulations
 % Wrote functioning bare-metal firmware for a RiscV CPU
+% Minimise dependence on proprietary and closed-source software + toolchains
 
 % Accelerator: VLIW/Superscalar execution
 
@@ -99,8 +117,25 @@
 % commands. 
 
 
-\chapter{Background} 
+% TODO: Talk about modern processors structure - Internal FPGA - motivations
+% Relate to Intel Acquisition of Altera --- (Recent) AMD Acquisition of Xilinx
+% Looks inc
+% TODO: Silicon surface? Embedded systems. - Which do I pick!?
+% Mainly ^^ 
+
+\chapter{Background}
+% TODO: Hardware design in general(?)
 \section{Risc-V Instruction Set}
+% TODO: What is an ISA?
+The set of operations a CPU may perform is known as the instruction set
+architecture (ISA). An ISA provides the means for a
+programmer to interface with a processor, allowing software to communicate with
+hardware. The ISA also specifies the method of memory addressing, whether
+addresses need to be aligned, and the structure of processor instructions.
+
+Most desktop computers make use of the x86\_64 ISA, with embedded
+devices and mobile phones commonly using the ARM ISA. 
+
 Risc-V is an open standard instruction set architecture (ISA). It is provided
 under open source licenses, where anybody may use the ISA, with no restrictions
 over the use of intellectual property (IP). In contrast the widely-used,
@@ -113,7 +148,27 @@ where only large companies like Qualcomm can compete.
 
 As such, there is no incentive for processor designs to be made open source.
 Obtaining the source code of most ARM processors is both difficult and
-impractical due to these strict and costly licencing requirements.
+impractical due to these strict and costly licencing requirements. Modern ARM
+instruction sets are bloated, needing to maintain necessary backwards
+compatibility --- in many cases a modern ARM CPU will contain redundant
+instructions, and therefore redundant logic and complexity that is unnecessary.
+
+The Risc-V ISA is modular, and can be partitioned into various extensions. Of
+notable interest are the 49 (\textbf{I}) 32-bit integer instructions, 11
+(\textbf{A}) atomic instructions, 36 (\textbf{C}) 16-bit compressed instructions, 8
+(\textbf{M}) instructions for integer multiplication and division, and 25
+(\textbf{F}) 32-bit precision floating point instructions. Consequently, a functional 32-bit
+processor for an embedded system with hardware floating point support requires
+only \textbf{129} instructions, with the \textbf{IMAFC} extensions. This
+increases the ease of processor design, and avoids the creation of unnecessary
+and superfluous hardware. 
+
+% A - 11 (atomic instructions)
+% C - 36 (compressed 16-bit instructions)
+% RV32I - 49 (32-bit integers)
+% M - 8 (integer x and /)
+% F - 25 (32-bit floating point instructions)
+
 
 % TODO: Risc-V cite: https://www2.eecs.berkeley.edu/Pubs/TechRpts/2014/EECS-2014-146.html 
 Since the publication of the Risc-V ISA, a variety of different open source
@@ -138,9 +193,17 @@ greater freedom, allowing us to pry into the internals, and analyse the
 specifics of processor behaviour if things behave in an unexpected manner.
 
 
-\section{Simulating Hardware}
-% Risc-V
-The fastest way to verify the design of hardware is through simulations.
+\section{Simulating Hardware} 
+The fastest way to test and verify the design of hardware is through simulations.
+Creating a silicon application-specific integrated circuit (ASIC) remains an
+incredibly costly and time consuming process.
+There is no room for rapid prototyping, and hundreds of thousands of units need
+to be created and sold at a profit for the process to be economically
+feasible. Fabricating a microprocessor at each stage in its development process
+for testing purposes is too expensive. As a consequence, there is very
+limited room for fabricating an integrated circuit for testing purposes in
+industry, and almost no room for fabrication in academic circles.
+
 \subsection{Verilator}
 Verilator is a piece of open source software that compiles Verilog into C++. A
 testbench can then be created, where the generated C++ class representing the
@@ -148,92 +211,381 @@ top-level module in hardware, can be stepped forwards in time with the clock
 toggled from low to high accordingly, and signals propagated through simulated
 hardware accordingly.
 
+In order to run our verilator simulation, we include our verilator-compiled C++
+headers and libraries generated that were from our hardware into our C++ test
+bench. We then proceed to initialise the verilator class representing the
+top-level module of our hardware design. It is then possible to toggle the clock
+signal and propagate our simulated hardware forwards in time. This is done as
+follows:
+\begin{lstlisting}[language=C++,style=customcpp]
+#include <verilated.h>
+#include "VTop.h"
+uint64_t main_time = 0;
+double sc_time_stamp () {    // Called by $time in Verilog
+    return main_time;
+}
+int main (int argc, char **argv, char **env) {
+    Verilated::commandArgs(argc, argv);
+    VTop* top = new VTop; // Create top-level module
+    while(!Verilated::gotFinish()) {
+        if ((main_time % 10) == 5) {
+            top->CLK = 1; // Raise clock at 5, 15, 25, ...
+        }
+        else if ((main_time % 10) == 0) {
+            top->CLK = 0; // Lower clock at 0, 10, 20, ...
+        }
+        top->eval(); // Propagate changes
+        main_time++;
+    }
+    top->final(); // end simulation
+    delete top;
+    return 0;
+}
+
+\end{lstlisting}
+
+
+While verilator suceeds in simulating hardware logic, it does not take into
+account physical considerations. Every hardware design has a route through
+combinatorial logic known as the critical path, this is the circuitry where
+speed of propagation leads to a bound on the maximum clock rate that is
+achieveable.
+
 % https://www.veripool.org/papers/Verilator_Fast_Free_Me_DVClub10_pres.pdf
-% TODO: Include example testbench
+
+\subsection{FPGAs}
+% TODO: image
+The most effective way to simulate hardware is by using a Field Programmable
+Gate Array (FPGA). An FPGA consists of a large lattice of programmable logic
+blocks interwoven by a grid of configurable wires and contact points. The programmable
+logic blocks range from boolean logic lookup tables (LUTs), clocks, registers, DSP units and
+block RAM. The lattice of programmable logic cells can be flashed, where the LUTs
+are programmed, and connected together by configurable wires such that the
+circuit described in hardware is physically created. A processor simulated on an
+FPGA can typically be clocked at a few hundred MHz. An FPGA can therefore offer
+over a thousand-fold performance increase compared to conventional software
+simulatons of hardware circuits.
+
+Unlike software simulations using verilator, an
+FPGA can suffer from physical limitations of hardware layout. A processor that
+isn't pipelined sufficiently may have a shorter critical path, preventing the
+generated hardware on an FPGA from reaching a sufficiently high clock rate.
+Furthermore, additional care must be taken to prevent signal timing violations,
+and clock domain crossing within the FPGA.
+
+% TODO: Clock domain crossing?
+
+% TODO: Types of FPGA(?)
 
 
-%\subsection{Bluesim}
+\subsubsection{Synthesis}
+% TODO: FPGA picture
+The process by which an FPGA is programmed with some hardware design is known
+as synthesis. The goal of the synthesis process is to produce a bitstream from a
+hardware design. The bitstream contains the necessary information required to
+program the logic blocks of an FPGA and connect them appropriately.
 
-% Spike
+The first stage of synthesis involves compiling Verilog HDL into a netlist.
+A netlist is a complete description of a digital circuit at the logic gate
+level, containing all of the information a schematic would, but in a structured
+format that is easier for a computer to process.
+The second stage involves a process known as place and route. Different FPGAs
+have different architectures and designs, with varying numbers of logic cells
+and logic cell types. Place and route involved running an algorithm, targetting
+a specific FPGA, which figures out a sufficiently optimal placement of logic
+cells and connections. Lastly, the design is verified for timing consistency,
+and the bitstream is generated.
 
-\section{FPGAs/Synthesis}
-% TODO: Talk about modern processors structure - Internal FPGA - motivations
-% Relate to Intel Acquisition of Altera --- (Recent) AMD Acquisition of Xilinx
-% Looks inc
+\subsubsection{Symbiflow}
+% Symbiflow - the future. (Find paper) 
+% TODO: Cite: https://ieeexplore.ieee.org/document/9103284
+The tools required for synthesis are closed source and proprietary, requiring
+licenses for use in commercial purposes. Both Xilinx and Altera, the major FPGA
+vendors, employ a greater number of software engineers than hardware engineers
+within their FPGA divisions to develop their complex closed-source proprietary
+software for synthesis.
 
-% TODO: Silicon surface? Embedded systems. - Which do I pick!?
-%  Mainly ^^ 
+The Symbiflow project is an open-source computer aided design (CAD) flow used to
+program commercial FPGAs. The proprietary bitstream format for the Xilinx
+Arty-A7 has been fully reverse engineered.
+The Symbiflow project is capable of performing synthesis, placement, routing
+and bitstream generation for this device, where no proprietary licence is required. 
 
-% TODO: Toolchains
-% Xilinx Vivado
-% Symbiflow
 
-\section{ChiselHDL \& SpinalHDL}
-% Features --- ChiselHDL + Risc-V
+\section{Hardware Design Languages}
+Designing hardware in traditional Verilog is a highly inefficient process. There
+are no data structures to group together inputs and outputs of hardware modules
+that represent different communication channels. Therefore wiring a submodule
+appropriately is an arduous process, prone to errors. Code that is highly
+modularised, counterintuitively, becomes harder to read and understand.
+Moreover, if a single wire needs to be modified, it needs to be explicitly
+stated in every instance of a module, a time consuming process.
 
-\section{Bluespec Verilog}
+This can be seen as follows:
+\tiny
+\begin{verbatim}
+  mkUART uart0(.CLK(CLK),
+         .RST_N(RST_N),
+         .put_from_console_put(uart0$put_from_console_put),
+         .set_addr_map_addr_base(uart0$set_addr_map_addr_base),
+         .set_addr_map_addr_lim(uart0$set_addr_map_addr_lim),
+         .slave_araddr(uart0$slave_araddr),
+         .slave_arburst(uart0$slave_arburst),
+         .slave_arcache(uart0$slave_arcache),
+         .slave_arid(uart0$slave_arid),
+         .slave_arlen(uart0$slave_arlen),
+         .slave_arlock(uart0$slave_arlock),
+         .slave_arprot(uart0$slave_arprot),
+         .slave_arqos(uart0$slave_arqos),
+         .slave_arregion(uart0$slave_arregion),
+         .slave_arsize(uart0$slave_arsize),
+         .slave_arvalid(uart0$slave_arvalid),
+         .slave_awaddr(uart0$slave_awaddr),
+         .slave_awburst(uart0$slave_awburst),
+         .slave_awcache(uart0$slave_awcache),
+         .slave_awid(uart0$slave_awid),
+         .slave_awlen(uart0$slave_awlen),
+         .slave_awlock(uart0$slave_awlock),
+         .slave_awprot(uart0$slave_awprot),
+         .slave_awqos(uart0$slave_awqos),
+         .slave_awregion(uart0$slave_awregion),
+         .slave_awsize(uart0$slave_awsize),
+         .slave_awvalid(uart0$slave_awvalid),
+         .slave_bready(uart0$slave_bready),
+         .slave_rready(uart0$slave_rready),
+         .slave_wdata(uart0$slave_wdata),
+         .slave_wlast(uart0$slave_wlast),
+         .slave_wstrb(uart0$slave_wstrb),
+         .slave_wvalid(uart0$slave_wvalid),
+         .EN_server_reset_request_put(uart0$EN_server_reset_request_put),
+         .EN_server_reset_response_get(uart0$EN_server_reset_response_get),
+         .EN_set_addr_map(uart0$EN_set_addr_map),
+         .EN_get_to_console_get(uart0$EN_get_to_console_get),
+         .EN_put_from_console_put(uart0$EN_put_from_console_put),
+         .RDY_server_reset_request_put(uart0$RDY_server_reset_request_put),
+         .RDY_server_reset_response_get(uart0$RDY_server_reset_response_get),
+         .RDY_set_addr_map(),
+         .slave_awready(uart0$slave_awready),
+         .slave_wready(uart0$slave_wready),
+         .slave_bvalid(uart0$slave_bvalid),
+         .slave_bid(uart0$slave_bid),
+         .slave_bresp(uart0$slave_bresp),
+         .slave_arready(uart0$slave_arready),
+         .slave_rvalid(uart0$slave_rvalid),
+         .slave_rid(uart0$slave_rid),
+         .slave_rdata(uart0$slave_rdata),
+         .slave_rresp(uart0$slave_rresp),
+         .slave_rlast(uart0$slave_rlast),
+         .get_to_console_get(uart0$get_to_console_get),
+         .RDY_get_to_console_get(uart0$RDY_get_to_console_get),
+         .RDY_put_from_console_put(uart0$RDY_put_from_console_put),
+         .intr(uart0$intr));
+\end{verbatim}
+\normalsize
+
+The traditional HDLs were built to be hardware simulation languages and were not
+intended for the purpose of designing very complex hardware, such as processors.
+Modern software development programming languages have abstractions, such as
+structures and functions, improving productivity, encouraging the reuse of
+code, and eliminating unnecessary 'cruft'.
+
+To figure out how a module behaves, one must constantly move around the file,
+observing how the state changes when registers flip in an \texttt{always\_ff}
+block, usually used to control a finite state machine. Simultaneously one must
+also keep track of how the combinatorial state of the hardware changes, by
+looking at an \texttt{always\_comb} block.
+
+Due to the difficulties concerning development time, and for purposes of
+efficiency, more expressive hardware design languages have been created, namely,
+ChiselHDL and Bluespec Verilog. The Risc-V Rocket processor is designed in
+ChiselHDL, whilst the Risc-V Piccolo, Flute and TOOOBA processors are written in
+BSV. The creation of a soft-core processor is a demonstration of the ability of
+these languages to be applied in practice and make the process of processor
+design more efficient and structured.
+% TODO: Downsides of traditional Verilog
+% TODO: \subsection{High-level synthesis}
+
+
+% TODO: Cite https://people.eecs.berkeley.edu/~krste/papers/chisel-dac2012.pdf 
+\subsection{ChiselHDL}
+Chisel (Constructing Hardware In a Scala Embedded Language), is a new
+programming language for hardware design that is based on Scala, that is
+executed on a JVM.
+
+Chisel is capable of generating low-level Verilog from high-level hardware
+design patterns that are written in Scala.
+
+Chisel allows inputs and outputs of modules to be bundled together, and
+components to be
+
+% Chisel generator / example
+% Chisel I/O / Module + Bundle of Bundles
+
+This is best demonstrated with the AXI4 protocol:
+\tiny
+\begin{verbatim}
+class AXIPeripheral extends Module {
+  val io = new Bundle {
+    val slave = new AXISlaveIF(8, 32)
+  }
+  [...]
+}
+\end{verbatim}
+\normalsize
+
+Code may be written in Scala to generate hardware.
+
+
+% TODO: Chisel Bundle, Component (explain)
+
+\subsection{Bluespec Verilog}
 % Features
+% Atomic rules, structs,
+% Correct concurrency - strict avoidance of race conditions
+
+% Superior to Chisel: rules + methods
+% All types are first-class --> functions can be used as arguments/parameters of
+% other functions and modules.
+
+
+% BSV --> Bluesim (small simulations)
+% BSV --> Verilog RTL --> Verilator / Synthesis
+
 % Example code / Comparisons
 % Benefits
 
 \chapter{Related Work} 
-\section{Open Source Hardware}
-
 \section{BlueVec}
 % https://www.cl.cam.ac.uk/~swm11/papers/FPL2013-BlueVec.pdf
 The BlueVec co-processor is a vector processor aimed at accelerating neural
-network inference designed to address the \emph{memory wall}. The memory wall
-refers to the growing discrepancy between memory bandwidth and compute power. It
-is increasingly common for an accelerator system to become memory-bound, where
-the latency/clock cycle cost of moving data to and from memory may even exceed
-the reduction in compute cycles from having a custom accelerator pipeline.
+network inference designed to address the computation botleneck of the
+\emph{memory wall}.
+The memory wall refers to the growing discrepancy between memory bandwidth and
+compute power. It is increasingly common for an accelerator system to become
+memory-bound, where the latency/clock cycle cost of moving data to and from
+memory may even exceed the reduction in compute cycles from having a custom
+accelerator pipeline.
 
+% TODO: Explain Memory wall further?
 The BlueVec co-processor relies on the observation that in many situations where
 a custom accelerator pipeline is implemented to accelerate some computation
-through performing it in hardware, a significant improvement may be demonstrated
+through performing it in hardware, a significant improvement may still be obtained
 by vectorizing the computation, and implementing the computation within
 software. The paper demonstrates the example of neural network inference, where
 the BlueVec co-processor is used in the context of a digit recognition problem.
 
-The BlueVec co-processor is designed in Bluespec Verilog, %
+The BlueVec co-processor is interacted with through the use of a custom
+instruction set extensin for the Nios II. The Altera Nios II is a soft-core processor
+that is designed to be synthesised on an Altera FPGA. It has a 32-bit RISC-based
+architecture, and while the internals are closed source, it is possible to add
+custom instruction set extensions within hardware. Altera provides their
+proprietary embedded design suite (EDS), where it is possible to compile C/C++
+software targetting the Nios RISC architecture, and making use of the custom
+instructions that are implemented in hardware.
 
-% 
-The BlueVec co-processor is used, and accessed 
+The ability to add custom instructions to the Nios processor provides one with
+sufficient versatility to fine tune the designed hardware to perform specific
+tasks very efficiently, making use of the parallellisation-based strengths of
+designing things in hardware.
 
+One of the key ways in which the BlueVec processor tackles the problem of the
+memory wall is by ensuring that memory is written to and read from in a
+streamlined fashion. Vectorised data is stored in contiguous arrays within
+memory, and the BlueVec co-processor highlights that it makes efficient use of
+external memory bandwidth through the use of burst memory access to stream data
+from external memory at a very high rate.
 
-% TODO: BlueVec - Literature Review
-% TODO: ZynqNet - Literature Review
-% Rocket RoCC - Literature Review
-% Google TPU? & Nvidia GPUs? --- Look into
+% TODO: Lane-local memories / Pipelining
+In order to maximise the clock frequency of the BlueVec processor, and therefore
+maximise throughput, the BlueVec processor pipelines operand fetching,
+instruction execution and result writeback. This reduces the length of the
+critical path.
 
+% TODO : Link to BSV
+The BlueVec co-processor consists of approximately 1000 lines of Bluespec
+Verilog and was developed over the course of only a few months. The quick, and
+minimalist development practices used during its construction is a testament to
+the benefits of the use of BSV over standard Verilog HDL.
 
+One of the principal disadvantages of the BlueVec co-processor is its reliance
+on proprietary synthesis tools (Altera Quartus), and the closed source soft-core
+processor. The development practices, and soft-core Nios processor involved in
+the construction of BlueVec lock us into the Altera software ecosystem. An
+Altera Quartus licence in particular is required to synthesise the hardware on
+an Altera FPGA and run the associated benchmarks in the paper. We do not have
+the ability to easily move the design to a Xilinx, or iCE FPGA, as not only is
+the soft-core Nios processor closed source, we must also rely on the
+automatically generated Avalon bus interconnect from the Altera Qsys SoC
+designer. As such, a substantial amount of work is required for the BlueVec
+processor to be moved onto a different platform.
+
+% TODO: Reliability considerations - vendor black boxes. Bugs (if found) -
+% impossible to correct. (Another section!?)
+
+Furthermore, we highlight the loss of interopability. We are constrained to the
+Nios instruction set. There is no way for an ARM, MIPS, Risc-V, or x86\_64 based
+system to interface with, and make use of the vector co-processor. With the
+growth of ARM processors used in embedded devices, and the recent emergence of
+Risc-V, this lack of interopability is a costly downside to the performance
+improvements demonstrated by BlueVec for vector processing.
+
+% TODO: Comment on Benchmarks
+% TODO: Bluevec - fails to hit capacity - CPU can't issue one instruction per
+% cycle
+
+% NOTE: BlueVec - Literature Review
 % NOTE: General argument --- elaborate upon motivations
 % NOTE: BlueVec --- Nios. Custom instructions ---> Loss of interopability
 % NOTE: Are there truly multiple functional units? Instructions STALL the cpu.
 % NOTE: Unadjustable silicon consumption --- less control!
 
+% TODO: ZynqNet - Literature Review
 % NOTE: ZynqNet --- too SPECIFIC, NN architecture needed beforehand.
+\section{ZynqNet}
+
+% TODO: Read ZynqNet Paper
+% How to contextualise!?
+
+% NO general-purpose linalg unit
+% 
+
+% \section{Risc-V Vector Instructions}
+% TODO: Not fully finalised --- poor compiler support
 
 
-\section{}
 
-% Bluespec Verilog
-
-% SIMD
+% Rocket RoCC - Literature Review
+% Google TPU? & Nvidia GPUs? --- Look into
 
 
-% TODO: image of SoC
-% CPU/AXI4 e.t.c.
-% Piccolo
-% VexRiscV
-% Rocket
-% SiFive Freedom E310
-\subsection{ARM Cortex M0/M3}
-\subsection{Freedom E310}
-\subsection{VexRiscV}
+% TODO: ARM Neon / Risc-V 'V' extension
+\section{SIMD}
+The Risc-V ISA has the (\textbf{V}) extension to support vector instructions.
+That is, instructions that operate on a contiguous region of memory. The ISA
+extension specifies the existence of vector registers, 
 
-\chapter{Design and Implementation}
+Crucially, the Risc-V vector extension has not yet been ratified. As such, its
+features may change, and it is unwise to implement the instructions.
 
+
+\section{Open Source Cores}
+% Since we seek to minimise the use of proprietary, and closed-source libraries.
+
+\subsection{Rocket}
+The Rocket processor is writteh in ChiselHDL
+% TODO: Rocket RoCC
+
+% Freedom E310
+The Freedom E310 is a Risc-V SoC designed by the company SiFive
+
+\subsection{Piccolo}
+% MIT TOOOBA project
+
+The Piccolo processor takes full advantage of the modular nature of processor
+design that is made possible through the use of Bluespec Verilog. 
+The Piccolo processor has a 3-stage in-order pipeline and may be configured to be 32-bits.
+
+%\chapter{Design and Implementation}
 % NOTE: Main contribution to (the field?)
 % NOTE: Original implementation
 % NOTE: Somehow demonstrate - extra-curricular reading?!
@@ -243,15 +595,10 @@ The BlueVec co-processor is used, and accessed
 
 % NOTE: Design decisions
 
-% Test bench --- functional
-% Floating point unit (mstatus csr)
 % RV32imafc - bare metal ELF
-% Linker file, bare metal
 % Spike, proxy kernel
-% Bare Metal LibC - RiscV
-% Heap memory!
 
-% Cost of movement...
+% Cost of movement... memory wall
 
 % Matrix multiplication
 % Naive implementation
@@ -261,31 +608,31 @@ The BlueVec co-processor is used, and accessed
 
 % ZipReduceUnitServer - improvements + bench
 % Unit duplication - special memory & wire connections!
-%
+% 
 
 
 % RegFile vs Vector#(Reg#()) vs BRAM
 
-
+\chapter{SoC and Testbench Setup: Design \& Implementation}
 \section{SoC Design}
+% TODO: SoC Image/Picture
 \subsection{Piccolo}
+Bluespec Verilog offers superior scheduling capabilities compared to ChiselHDL,
+and standard Verilog. As such, we decide to use the Piccolo processor from the
+MIT TOOOBA family within our simulation and testbench. 
 
-\subsection{AXI4 Protocol}
+
+%\subsection{AXI4 Protocol}
 % TODO: OR IN Test Peripheral (AXI4)
 % TODO: Background info/filler and origin
 \texttt{wstrb}
 % TODO: How is memory read/written from
-
-The AXI4 protocol comes with the disadvantage of being able write a maximum of 4
-bytes per request on 32-bit systems. Each request, orchestrated by the CPU,
-spans multiple clock cycles.
-
-
-
-
+%The AXI4 protocol comes with the disadvantage of being able write a maximum of 4
+%bytes per request on 32-bit systems. Each request, orchestrated by the CPU,
+%spans multiple clock cycles.
 % TODO: To what extent does this 
 
-\section{Testbench Setup}
+\section{Risc-V Firmware}
 \subsection{Risc-V Assembly \& Firmware Structure}
 The firmware which runs on an embedded Risc-V core is significantly different to
 software that runs on top of an operating system. In order to compile C and
@@ -309,10 +656,11 @@ for these functions are statically linked, and the code within our final binary
 ELF is entirely self-contained. This can be seen in the section layout of our
 produced ELF file.
 
-Relevant sections of our final ELF file. We have a stack,  
+Relevant sections of our final ELF file: We have a $64$~KB stack, and statically
+linked functions from newlib.  
 \tiny
 \begin{verbatim}
-Section ._stack         : addr         800000f8 to addr         80010100; size 0x   10008 (= 65544) bytes
+Section .stack         : addr         800000f8 to addr         80010100; size 0x   10008 (= 65544) bytes
 Section .text.pow       : addr         80013444 to addr         8001352e; size 0x      ea (= 234) bytes
 Section .text.__ieee754_pow: addr         8001352e to addr         80013fee; size 0x     ac0 (= 2752) bytes
 Section .text.__ieee754_sqrt: addr         80013fee to addr         800141b4; size 0x     1c6 (= 454) bytes
@@ -320,64 +668,203 @@ Section .text.memcpy    : addr         8001707c to addr         80017164; size 0
 \end{verbatim}
 \normalsize
 
-
-
 \subsubsection{UART/Serial Output}
 The most important firmware debugging feature to get working is the ability to
 print to console. The Piccolo techbench SoC kindly contains a NS16550 UART
-peripheral that is connected to 
+peripheral that is connected to the AXI4 bus interconnect as a slave device.  
 
-This UART peripheral is memory mapped. 
+This UART peripheral is memory mapped 
 
-\subsubsection{Printf}
-
-\subsubsection{LibC --- NewLib}
-
+% TODO: UART
 
 \subsubsection{Linker File}
+Since we are compiling our C into a bare-metal ELF, we must specify the layout
+of the machine code within the binary. This includes specifying the start
+address of RAM, the region of memory where the stack is located, and where
+static/initialised variables and sections of machine code are located within our
+binary. This is so it is loaded into memory in an appropriate manner.
+
+The main sections of the linker file are as follows: The \texttt{.vector}
+section contains the instructions that are run after the processor is booted.
+The \texttt{.stack} section is an empty region at the beginning of memory
+where the \texttt{\_stack\_start} symbol is defined. The \texttt{.data} section
+contains initialised data, that is typically accessed through global pointer
+(\texttt{gp}) relative addressing. The \texttt{.bss} section contains
+uninitialised data. Lastly, the \texttt{.text} section contains our machine
+code.
+
+We intentionally place the stack below our \texttt{.text} code section for security
+purposes. The stack grows downwards, and as a result it cannot write into our
+code section in the situation that a stack overflow occurs.
+
+\scriptsize
+\begin{verbatim}
+OUTPUT_FORMAT("elf32-littleriscv")
+OUTPUT_ARCH(riscv)
+ENTRY(crtStart) /* Symbol for entry point */
+
+MEMORY {
+  RAM      (rwx): ORIGIN = 0x80000000, LENGTH = 0x10000000
+}
+
+_stack_size = 0x10000; /* 64KB stack = 0x10000 */
+
+SECTIONS {
+  .vector ORIGIN(RAM) : {
+    *crt.o(.start_jump); /* ASM to run at boot */
+  } > RAM
+
+  .stack (NOLOAD) : {
+    . = ALIGN(16);
+    PROVIDE (_stack_end = .);
+    . = . + _stack_size;
+    . = ALIGN(16);
+    PROVIDE (_stack_start = .);
+  } > RAM
+
+  .data : {
+    *(.rdata) /* global static data */
+    *(.rodata .rodata.*)
+    *(.data .data.*) /* initialised data */
+    . = ALIGN(8);
+    PROVIDE( __global_pointer$ = . + 0x800 );
+    *(.sdata .sdata.*) /* small initialised data */
+    . = ALIGN(8);
+    *(.srodata .srodata.*) /* read-only initialised data */
+  } > RAM
+
+  .bss (NOLOAD) : {
+		. = ALIGN(4);
+		_bss_start = .;
+    *(.sbss*) /* small uninitialised data */
+    *(.bss .bss.*) /* uninitialised data */
+    *(COMMON) /* common symbols */
+		. = ALIGN(4);
+		_bss_end = .;
+  } > RAM
+
+  .text : {
+    *(.text);
+    /* *(.text.*); */ /* seperate sections for static linked NewLib functions */
+  } > RAM
+}
+\end{verbatim}
+\normalsize
 
 One of the first problems encountered was a CPU trap due to a stack overflow.
-The size of the stack may be modified in the linker file. The embeddedartistry
+The size of the stack may be modified in the linker file. The \texttt{embeddedartistry}
 printf implementation that avoids using heap memory stores a considerable amount
-of data on the stack. As such, the stack needs to be modified.   
-% TODO: Avoiding stack overflow
-% TODO: 
+of data on the stack. As such, we set the stack to $64$~KB, rather than the
+$4$~KB used for testing purposes. A larger stack reduces the likelihood of a
+stack overflow.
+
+\subsubsection{LibC \& printf}
+The standard printf function defined within the \texttt{stdio.h} header will
+include the declaration of printf compiled within the NewLib library. It will
+then be statically linked to our final binary, and have the code section
+corresponding to the print function included within your final ELF file.
+
+The standard printf function makes use of heap memory. Due to memory
+constraints, the location of the heap is not specified within the linker file.
+We therefore seek an implementation of the printf function that relies only on
+the stack. 
+% TODO: Cite https://github.com/embeddedartistry/printf
+
+\subsubsection{crt.s --- RiscV Assembly}
+The initial location of our program counter after it is moved from the boot rom
+is \texttt{0x80000000}. This is the start address of our RAM. For
+instruction-level control over CPU behaviour on boot, we place our own section
+of assembly code at the beginning of RAM.
+
+Of notable importance is setting the stack pointer \texttt{sp}, to ensure that
+stack memory is allocated in the correct region of memory. We also set the
+global pointer to allow global pointer relative addressing of variables in our
+data section.
 
 
-\subsection{Floating Point Unit}
+\lstset{language=[RISC-V]Assembler}
+\begin{lstlisting}
+.global crtStart
+.global main
+
+.section	.start_jump,"ax",@progbits
+crtStart:
+  lui  x2,      %hi(crtInit)
+  addi x2, x2,  %lo(crtInit)
+  jalr x1, x2   // jump to label crtInit
+  nop
+
+.section .text
+crtInit:
+  .option push
+  .option norelax
+  la gp, __global_pointer$ // Set global pointer for GP-relative addressing
+  .option pop
+  la sp, _stack_start // Set stack pointer to beginning of stack
+  call main
+infinitLoop:
+  j infinitLoop
+
+\end{lstlisting}
+\lstset{}
+
+\section{Testbench Setup}
+\subsection{Debugging Piccolo: FPU}
 \subsubsection{Fixing Piccolo FPU typeerrors}
-The latest commit of the Piccolo processor, at the time of development, (), had
+% TODO: hyperlink: https://github.com/bluespec/Piccolo/tree/a4e34ef2f2ba4e82a95faa2bbe3dd832ca3c51a0 
+The latest commit of the Piccolo processor, at the time of development, (a4e34ef), had
 a type error in the floating point unit (FPU). 
 
-The compiler experiences ambiguity between the RoundMode's declared in. We must enter, FPU.bsv and FBox\_Core.bsv and prefix the RoundMode type with FloatingPoint::RoundMode.
+The compiler experiences ambiguity between the RoundMode enumerations declared
+within the BSV FloatingPoint library (\texttt{FloatingPoint.bsv}), and the
+enumeration within \texttt{ISA\_Decls}. We hypothesise that a previous version
+of the Bluespec Verilog compiler was capable of either resolving this ambiguity
+by falling back to the library definition of the datatype, or prioritised the
+library one to allow the processor to compile. Due to a lack of continuous
+integration, or testing, this issue has not yet been fixed.
+% TODO: Submit a pull request
 
 % NOTE: Compile log
 \begin{verbatim}
 compiling Piccolo/src_Core/CPU/FPU.bsv
 Warning: Unknown position: (S0080)
-1 warnings were suppressed.
+   1 warnings were suppressed.
 Error: "Piccolo/src_Core/CPU/FPU.bsv", line 52, column 30: (T0080)
 Type error at the use of the following function:
-mkFloatingPointDivider
+   mkFloatingPointDivider
 
 The expected return type of the function:
-g__#(ClientServer::Server#(Tuple3#(FPU::FSingle, FPU::FSingle, ISA_Decls::RoundMode), FPU::FpuR))
+   g__#(ClientServer::Server#(Tuple3#(FPU::FSingle, FPU::FSingle, ISA_Decls::RoundMode), FPU::FpuR))
 
 The return type according to the use:
-c__#(ClientServer::Server#(Tuple3#(FloatingPoint::FloatingPoint#(d__, e__),
-FloatingPoint::FloatingPoint#(d__, e__),
-FloatingPoint::RoundMode),
-Tuple2#(FloatingPoint::FloatingPoint#(d__, e__), FloatingPoint::Exception)))
+   c__#(ClientServer::Server#(Tuple3#(FloatingPoint::FloatingPoint#(d__, e__),
+      FloatingPoint::FloatingPoint#(d__, e__),
+      FloatingPoint::RoundMode),
+      Tuple2#(FloatingPoint::FloatingPoint#(d__, e__), FloatingPoint::Exception)))
 \end{verbatim}
 
+In order to successfully compile the Piccolo processor with floating point
+support, we must eliminate the ambiguity manually by specifying which package,
+or library the datatype is declared within. We enter, \texttt{FPU.bsv} and prefix the
+RoundMode type with \texttt{FloatingPoint::RoundMode} when it is used within the
+arguments of a floating point library module. Additionally, we must enter
+\texttt{FPU\_Core.bsv} and modify the function that converts between both
+enumerations. The \texttt{fv\_getRoundMode} function must be modified to return
+\texttt{FloatingPoint::RoundMode}.
+
+After these changes, we observe that the Piccolo processor with the
+floating point Risc-V ISA extension successfully compiles into Verilog RTL from
+Bluespec Verilog. We may then simulate the processor performing floating point
+precision mathematics using our verilator test bench.
+
 \subsubsection{mstatus CSR}
-Once the FPU is successfully compiled, and the processor is compiled with
+Once the FPU is successfully compiled and the processor is compiled with
 floating point support, the processor will trap and throw an exception when any
 floating point instruction is executed. When a processor exception takes place,
 the processor moves the program counter back to the start of the boot ROM, this
-is observed in the simulation output as an infinite loop, where code after the
-first floating point instruction will never execute, as the program will
-constantly restart.
+is observed in the simulation output as an infinite loop, where all instructions
+after the first floating point instruction will never execute, as the processor
+will constantly trap and reset itself, perpetually restarting the program.
 
 With an open source processor, we have the ability to inspect and modify the
 source code, and recompile the processor. We can instruct the CPU to print its
@@ -398,11 +885,11 @@ way, specifically for debugging purposes. Additionally, the
 the exception code enumeration. As such, we do not need to constantly switch
 between looking at our program output, and figuring out what the output
 represents in our source code files.
-% CPU.bsv
-% TODO: BSV
-\begin{lstlisting}[language=C,style=customc]
+
+\begin{verbatim}
+// CPU.bsv
    rule rl_trap ((rg_state == CPU_TRAP)
-		 && (stage1.out.ostatus != OSTATUS_BUSY));
+     && (stage1.out.ostatus != OSTATUS_BUSY));
 
       [...]
 
@@ -410,7 +897,7 @@ represents in our source code files.
       $display("Exc_Code: ", fshow_trap_Exc_Code(exc_code));
       $finish(0);
    endrule: rl_trap
-\end{lstlisting}
+\end{verbatim}
 
 The information we obtain about our processor trap can be matched to the
 specific address in assembly code that causes the error. In this particular
@@ -434,7 +921,8 @@ struct is copied within the ALU function that corresponds to loading data into
 registers, \texttt{fv\_LD}. If the \texttt{flw} instruction is called, a
 particular bit on the \texttt{mstatus} control-status register (CSR) is read. In
 our case, the fs bit is found to be disabled.
-\begin{lstlisting}[language=C,style=customc]
+\begin{verbatim}
+// EX_ALU_functions.bsv
 function ALU_Outputs fv_LD (ALU_Inputs inputs);
    [...]
    // FP loads are not legal unless the MSTATUS.FS bit is set
@@ -450,7 +938,7 @@ function ALU_Outputs fv_LD (ALU_Inputs inputs);
    [...]
    return alu_outputs;
 endfunction
-\end{lstlisting}
+\end{verbatim}
 
 Compared to debugging standard Verilog, the structure of Bluespec Verilog
 provides us with a greater ability to debug, and identify relevant codepaths.
@@ -467,7 +955,6 @@ instructions operate correctly.
 % https://github.com/riscv/riscv-pk/blob/master/machine/minit.c
 % https://github.com/riscv/riscv-pk/blob/master/machine/encoding.h 
 \begin{lstlisting}[language=C,style=customc]
-
 // encoding.h
 #define MSTATUS_FS          0x00006000
 #define write_csr(reg, val) ({ \
@@ -484,10 +971,7 @@ static void mstatus_init()
   write_csr(mstatus, mstatus);
   [...]
 }
-
 \end{lstlisting}
-
-
 
 % TODO: Citation
 % “The RISC-V Instruction Set Manual, Volume II: Privileged Architecture,
@@ -496,13 +980,17 @@ static void mstatus_init()
 % https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf
 % TODO: Citation (Spike) + RiscV PK
 
-\subsection{Test Peripheral (AXI4)}
+\subsection{AXI4 Test Peripheral}
 When building a peripheral, it is important to first work constructively from a
 minimum functioning unit. In order for our embedded processor to communicate
 with with our peripheral, we make use of memory-mapped I/O. We map a small
 unoccupied memory address range to our peripheral, and give it a small internal
 region of memory where 4-byte integers can be read/written from.
 
+\subsubsection{What is AXI4?}
+A microprocessor communicates with 
+
+% TODO: Explain AXI4
 The AXI4 protocol is designed by ARM, and is royalty-free, where a licence is
 not required for academic or commercial use.
 
@@ -518,113 +1006,194 @@ not required for academic or commercial use.
 % 35 wires in total, excluding clock & reset
 
 Due to the inherent complexity of the AXI4 protocol, large combinatorial finite
-state machines are required to ensure the read and
-write requests of the AXI4 bus are processed correctly. The state of over a
-dozen wires needs to be considered by the programmer on every clock cycle.
-Developing a peripheral in this manner is a challenging feat.
+state machines are required to ensure the read and write requests of the AXI4
+bus are processed correctly.
+The state of over a dozen wires needs to be considered by the programmer on
+every clock cycle. Developing a peripheral in this manner in standard Verilog
+RTL is a challenging feat.
 
 Moreover, when a peripheral for the module is initialised, all 35 wires
 corresponding to signals in the AXI4 protocol need to be connected to the AXI4
 interconnect. All of these connections need to be manually specified. This can
 be observed in Verilog RTL as follows:
-
-
 \tiny
 \begin{verbatim}
   mkUART uart0(.CLK(CLK),
-	       .RST_N(RST_N),
-	       .put_from_console_put(uart0$put_from_console_put),
-	       .set_addr_map_addr_base(uart0$set_addr_map_addr_base),
-	       .set_addr_map_addr_lim(uart0$set_addr_map_addr_lim),
-	       .slave_araddr(uart0$slave_araddr),
-	       .slave_arburst(uart0$slave_arburst),
-	       .slave_arcache(uart0$slave_arcache),
-	       .slave_arid(uart0$slave_arid),
-	       .slave_arlen(uart0$slave_arlen),
-	       .slave_arlock(uart0$slave_arlock),
-	       .slave_arprot(uart0$slave_arprot),
-	       .slave_arqos(uart0$slave_arqos),
-	       .slave_arregion(uart0$slave_arregion),
-	       .slave_arsize(uart0$slave_arsize),
-	       .slave_arvalid(uart0$slave_arvalid),
-	       .slave_awaddr(uart0$slave_awaddr),
-	       .slave_awburst(uart0$slave_awburst),
-	       .slave_awcache(uart0$slave_awcache),
-	       .slave_awid(uart0$slave_awid),
-	       .slave_awlen(uart0$slave_awlen),
-	       .slave_awlock(uart0$slave_awlock),
-	       .slave_awprot(uart0$slave_awprot),
-	       .slave_awqos(uart0$slave_awqos),
-	       .slave_awregion(uart0$slave_awregion),
-	       .slave_awsize(uart0$slave_awsize),
-	       .slave_awvalid(uart0$slave_awvalid),
-	       .slave_bready(uart0$slave_bready),
-	       .slave_rready(uart0$slave_rready),
-	       .slave_wdata(uart0$slave_wdata),
-	       .slave_wlast(uart0$slave_wlast),
-	       .slave_wstrb(uart0$slave_wstrb),
-	       .slave_wvalid(uart0$slave_wvalid),
-	       .EN_server_reset_request_put(uart0$EN_server_reset_request_put),
-	       .EN_server_reset_response_get(uart0$EN_server_reset_response_get),
-	       .EN_set_addr_map(uart0$EN_set_addr_map),
-	       .EN_get_to_console_get(uart0$EN_get_to_console_get),
-	       .EN_put_from_console_put(uart0$EN_put_from_console_put),
-	       .RDY_server_reset_request_put(uart0$RDY_server_reset_request_put),
-	       .RDY_server_reset_response_get(uart0$RDY_server_reset_response_get),
-	       .RDY_set_addr_map(),
-	       .slave_awready(uart0$slave_awready),
-	       .slave_wready(uart0$slave_wready),
-	       .slave_bvalid(uart0$slave_bvalid),
-	       .slave_bid(uart0$slave_bid),
-	       .slave_bresp(uart0$slave_bresp),
-	       .slave_arready(uart0$slave_arready),
-	       .slave_rvalid(uart0$slave_rvalid),
-	       .slave_rid(uart0$slave_rid),
-	       .slave_rdata(uart0$slave_rdata),
-	       .slave_rresp(uart0$slave_rresp),
-	       .slave_rlast(uart0$slave_rlast),
-	       .get_to_console_get(uart0$get_to_console_get),
-	       .RDY_get_to_console_get(uart0$RDY_get_to_console_get),
-	       .RDY_put_from_console_put(uart0$RDY_put_from_console_put),
-	       .intr(uart0$intr));
+         .RST_N(RST_N),
+         .put_from_console_put(uart0$put_from_console_put),
+         .set_addr_map_addr_base(uart0$set_addr_map_addr_base),
+         .set_addr_map_addr_lim(uart0$set_addr_map_addr_lim),
+         .slave_araddr(uart0$slave_araddr),
+         .slave_arburst(uart0$slave_arburst),
+         .slave_arcache(uart0$slave_arcache),
+         .slave_arid(uart0$slave_arid),
+         .slave_arlen(uart0$slave_arlen),
+         .slave_arlock(uart0$slave_arlock),
+         .slave_arprot(uart0$slave_arprot),
+         .slave_arqos(uart0$slave_arqos),
+         .slave_arregion(uart0$slave_arregion),
+         .slave_arsize(uart0$slave_arsize),
+         .slave_arvalid(uart0$slave_arvalid),
+         .slave_awaddr(uart0$slave_awaddr),
+         .slave_awburst(uart0$slave_awburst),
+         .slave_awcache(uart0$slave_awcache),
+         .slave_awid(uart0$slave_awid),
+         .slave_awlen(uart0$slave_awlen),
+         .slave_awlock(uart0$slave_awlock),
+         .slave_awprot(uart0$slave_awprot),
+         .slave_awqos(uart0$slave_awqos),
+         .slave_awregion(uart0$slave_awregion),
+         .slave_awsize(uart0$slave_awsize),
+         .slave_awvalid(uart0$slave_awvalid),
+         .slave_bready(uart0$slave_bready),
+         .slave_rready(uart0$slave_rready),
+         .slave_wdata(uart0$slave_wdata),
+         .slave_wlast(uart0$slave_wlast),
+         .slave_wstrb(uart0$slave_wstrb),
+         .slave_wvalid(uart0$slave_wvalid),
+         .EN_server_reset_request_put(uart0$EN_server_reset_request_put),
+         .EN_server_reset_response_get(uart0$EN_server_reset_response_get),
+         .EN_set_addr_map(uart0$EN_set_addr_map),
+         .EN_get_to_console_get(uart0$EN_get_to_console_get),
+         .EN_put_from_console_put(uart0$EN_put_from_console_put),
+         .RDY_server_reset_request_put(uart0$RDY_server_reset_request_put),
+         .RDY_server_reset_response_get(uart0$RDY_server_reset_response_get),
+         .RDY_set_addr_map(),
+         .slave_awready(uart0$slave_awready),
+         .slave_wready(uart0$slave_wready),
+         .slave_bvalid(uart0$slave_bvalid),
+         .slave_bid(uart0$slave_bid),
+         .slave_bresp(uart0$slave_bresp),
+         .slave_arready(uart0$slave_arready),
+         .slave_rvalid(uart0$slave_rvalid),
+         .slave_rid(uart0$slave_rid),
+         .slave_rdata(uart0$slave_rdata),
+         .slave_rresp(uart0$slave_rresp),
+         .slave_rlast(uart0$slave_rlast),
+         .get_to_console_get(uart0$get_to_console_get),
+         .RDY_get_to_console_get(uart0$RDY_get_to_console_get),
+         .RDY_put_from_console_put(uart0$RDY_put_from_console_put),
+         .intr(uart0$intr));
 \end{verbatim}
 \normalsize
 
 Bluespec Verilog offers a significant degree of abstraction when processing AXI4
 read and write requests, and also when attaching the peripheral to the AXI4 bus interconnect.
+% TODO: Include code!
 
 
+% TODO: Include picture of Vivado SoC
+Proprietary CAD tools, such as Xilinx Vivado, typically have a built-in block
+design tool. The built in design tool allows the developer to see the SoC as a
+whole, and visually connect components together. These design tools generate the
+necessary Verilog HDL representing the SoC and the necessary connections between
+the module components.
 
-\subsubsection{AXI4 write request}
+Our SoC can be created by creating the necessary IP blocks for our accelerator,
+and processor, and making use of the proprietary AXI interconnect, UART module
+and block memory controller. The block design tools created by Xilinx and Altera
+are a solution to the mess of specifying wires and connections when writing
+standard Verilog HDL in a modular fashion. The design may be then simulated
+directly using the xsim command within Xilinx Vivado.
+% TODO: talk about why we avoid this (proprietary IP bugs)
 
-In standard verilog, one must keep track of 
+In contrast, our testbench SoC written in Bluespec Verilog has no graphical
+configuration. The entire network consisting of the processor core, peripherals
+and AXI4 interconnect fabric are all written in BSV, and the modules are
+connected together manually. This process is significantly simpler than with
+Verilog RTL, as the overloaded module/typeclass \texttt{mkConnection} can be used to
+forward arbitrary structures of data between modules of particular interfaces.
+An instance of \texttt{mkConnection} exists for the AXI4 master and slave
+interfaces that are also implemented in BSV themselves. The AXI4 fabric module
+is the interconnect, and is parametised by the number of master and slave
+interfaces it should have. Each instance of \texttt{mkConnection} is a module
+that forwards data between all 35 AXI4 wires. As shown below:
+% TODO: Add SoCMap/SoCTop
+\scriptsize
+\begin{verbatim}
+   Fabric_AXI4_IFC  fabric <- mkFabric_AXI4;
+   Core_IFC #(N_External_Interrupt_Sources)  core <- mkCore;
+   UART_IFC   uart0  <- mkUART;
+   Test_IFC   test <- mkTest;
+   mkConnection (core.cpu_imem_master,  fabric.v_from_masters [imem_master_num]); // instruction memory
+   mkConnection (core.cpu_dmem_master,  fabric.v_from_masters [dmem_master_num]); // data memory
+   mkConnection (fabric.v_to_slaves [uart0_slave_num],  uart0.slave); // UART0 serial peripheral
+   mkConnection (fabric.v_to_slaves [test_slave_num],  test.slave); // Test peripheral
+   // Connect to BlockRAM
+\end{verbatim}
+\normalsize
 
-The AXI4 protocol 
+% TODO: Perhaps include example AXI4 r/w
 
 \subsubsection{AXI4 Alignment/Padding}
-This code results in the cpu trapping:
+Due to the structure of the AXI4 bus and the way a processor writes to memory,
+data must be aligned appropriately. A 32-bit AXI4 bus may only access an aligned
+4-byte block per request. As a consequence, it is possible to fail
+writing/reading from memory when crossing the block boundary.
+
+% TODO: Include image
+For example, writing to an unaligned 4-byte region at the address $002$ crosses
+the boundary:
 \begin{verbatim}
 *((uint32_t\*)0xC0001002) = 1337;
 Trap_Info { epc: 'h800022d6, exc_code: 'h6, tval: 'hc0001002 }
 TRAP EXC: STORE_AMO_ADDR_MISALIGNED
-The exception/trap code corresponds to:
+*((uint32_t\*)0xC0001000) = 1337;
 \end{verbatim}
+
+This is vital to keep in mind throughout writing to peripheral memory. An
+integer must be aligned to 4 bytes, a short to 2 bytes, and a char to the
+nearest byte. 
 
 \subsubsection{Struct Padding}
 % TODO: Introduce the need for struct padding/packing
-This is of particular importance to consider when we issue a command to the
-accelerator. In order to ensure 
+This is of particular importance to consider later when we issue commands to the
+accelerator. By default, a C struct is padded and aligned to conform to the
+alignment of memory access. When a struct is written to memory, it always begins
+at the nearest 4 byte boundary. All datatypes within a struct ar aligned to the
+nearest 4, For instance:
+
+\begin{verbatim}
+struct paddedstuff_t {
+    uint16_t A; // short (2B) --> (4B) PADDED to ALIGN to nearest 4 bytes
+    uint32_t B; // int (4B)
+}; // 8 BYTES
+struct packedstuff_t {
+    uint16_t A; // short (2B)
+    uint32_t B; // int (4B) ---> Will write at base+0x2
+} __attribute((packed)); // 6 BYTES
+\end{verbatim}
 
 
-\subsubsection{Firmware}
+\chapter{SoC \& Testbench Setup: Evaluation}
+\section{Clock rate within simulation}
+\subsection{Methodology}
+% TODO: Why was Piccolo chosen(?) --- backtrack
+The Piccolo processor was chosen due to its relative simplicity. With a simple
+3-stage in-order pipeline, the generated C++ should be relatively simple
+compared to the 5-stage pipeline in the Flute processor, and the out-of-order
+superscalar architecture of the TOOOBA processor. As a consequence, we would
+therefore maximise the likelihood that we obtain a reasonable clock rate.
+
+% TODO: Include modified testbench code. std::chrono
+% TODO: How to measure clock rate!?
+We modify the testbench program to output the clock rate when the testbench is
+receives an interrupt signal, or when the simulation ends. 
+
+\subsection{Results}
+On interrupting our program we measure a clock rate of $22406$~Hz. This is impressive for a simulation.
+% TODO: Evaluate properly
+
+\section{Simulating an AXI4 Peripheral}
+\subsection{Methodology}
+We make use of a verilator testbench to simulate our SoC. We write some simple
+test firmware to write into the peripheral, and trigger its execution.
+
 When a special execution bit is set, we set a special accelerator busy bit and
 unset the execution bit. In a single cycle, within the accelerator, if the
 busy bit is set, we double the array and unset the busy bit. This allows the
 firmware to stall until the busy bit is unset, and the computation has been
 completed.
-
-Throughout this process, we make use of, and modify, the fully functioning test
-bench provided by Piccolo as a basis for our simulations of the test peripheral.
 
 % NOTE: Firmware C code for accelerator
 \begin{lstlisting}[language=C,style=customc]
@@ -639,7 +1208,7 @@ void main() {
   }
 
   println("Set Control Bit..");
-  *((uint8_t volatile*)TEST_CONTROL_ADDR) |= 1;
+  *((uint8_t volatile*)TEST_CONTROL_ADDR) |= 1; // Set execute!
 
   while(*((uint8_t volatile*)TEST_CONTROL_ADDR) & 2 == 0) {}
   println("Stalling.."); // Printing Stalling... stalls anyway...
@@ -652,6 +1221,8 @@ void main() {
 }
 \end{lstlisting}
 
+
+\subsection{Results}
 % NOTE: Console log
 \begin{verbatim}
 0: 0
@@ -667,8 +1238,12 @@ Stall complete!
 3: 6
 \end{verbatim}
 
-\section{Matrix Multiplication Peripheral}
-\subsection{Overview}
+Now that we have demonstrated a functioning testbench, and 
+% TODO: Compare to proprietary SoC?!
+
+\chapter{Matrix Multiplication Peripheral: Design \& Implementation}
+\section{Overview}
+\subsection{Background}
 Mathematically, the result of a matrix multiplication may be expressed
 accordingly:
 \begin{align*}
@@ -684,43 +1259,49 @@ dimension. A multi-dimensional matrix is represented as a multi-dimensional
 array, this array is represented in memory in as a flattened contiguous
 one-dimensional array, with the rows of the matrix next to each other in memory.
 
-As such, we access the xth ro
+Consequently we access the element on the xth row, and yth column of a matrix as
+such:
 $$ \text{IndexOf} A[x][y] = x + y * width(A) $$
 
 This methodology of accessing the x, and y elements of a stored matrix is used
 throughout the accelerator.
 
-% TODO: Internal memory
+Block RAM (BRAM) is a contiguous region of memory that exists within the FPGA. In
+Bluespec Verilog, block RAM is created through the use of something known as a
+Register File (\texttt{RegFile}). Crucially, this is distinct from the Bluespec
+array-access methodology of \texttt{Vector\#(N, Reg\#(type))}. A vector of
+registers are seperate registers, which need not necessary be contiguous in
+hardware, that can be array-accessed in a contiguous fashion within Bluespec.
 
-% TODO: Register-file, vs Vector#(Reg#())
-A contiguous region of memory, that exists within the FPGA block RAM,  
-Our peripheral contains a RegFile of internal memory which is memory mapped to
-the CPU via an AXI4 bus slave interface.
+Our peripheral contains a RegFile of internal BRAM which is memory mapped to
+the CPU via an AXI4 bus slave interface. 
+% RegFile vs Vector#(Reg#()) vs BRAM
 
-\subsection{Design Decisions}
+\subsection{Design}
 \subsubsection{Hybrid/Monolithic}
 % TODO: Citations - argue around, base ideas off.
 We propose two potential ways of implementing matrix multiplication. We could
-pursue a monolithic approach and implement the entire multiplication purely in
-hardware. Alternatively, we could perform a hybrid approach, where each element
-of \texttt{C[i][j]} may be computed by issuing a separate command to the
-accelerator. This is proposed under the idea that the creation and scheduling of
-instructions for each element in the final matrix, is more easily performed
-within the firmware of the embedded processor.
+pursue a monolithic approach and implement the entire matrix multiplication
+operation purely in hardware. Alternatively, we could perform a hybrid approach,
+where each element of the matrix \texttt{C[i][j]} may be computed by issuing a
+separate command to the accelerator. This is performed under the assumption that the
+creation and scheduling of instructions for each element in the final matrix, is
+more easily performed within the firmware of the embedded processor, without a
+significant perfomance penalty.
 
 \subsubsection{Memory Regions}
 We split our accelerator 
 \begin{table}
   \centering
-\begin{tabular}{lll}
-  \toprule
-  Offset Address Range & Size & Purpose \\
-  \midrule
-  \texttt{0x0000-0x0020} & 32 Bytes & Status \\
-  \texttt{0x0020-0x0040} & 32 Bytes & Control \\
-  \texttt{0x0040-0x1000} & $\approx$ 4 KB & Memory \\
-  \bottomrule
-\end{tabular}
+  \begin{tabular}{lll}
+    \toprule
+    Offset Address Range & Size & Purpose \\
+    \midrule
+    \texttt{0x0000-0x0020} & 32 Bytes & Status \\
+    \texttt{0x0020-0x0040} & 32 Bytes & Control \\
+    \texttt{0x0040-0x1000} & $\approx$ 4 KB & Memory \\
+    \bottomrule
+  \end{tabular}
 \end{table}
 
 \subsubsection{Status}
@@ -732,9 +1313,16 @@ We write our control command/instruction to the control memory bank. We then set
 execute status bit, and the accelerator should run the appropriate command.
 
 \subsubsection{Memory}
+% TODO: Data memory --- how?!
+
+\section{Command Issuing \& Decoding}
+\subsection{Format}
+In the hybrid model of our accelerator, and individual command must be able to
+compute an individual element of our final matrix, C. As discussed earlier,
+matrices are stored linearly in memory. 
 
 
-\subsection{Command Issuing \& Decoding}
+\subsection{Decoding}
 One of the principal problems encountered between issuing a command containing
 a struct of multi-byte data to the accelerator from the embedded processor. By
 default, the unsigned integer type in BSV is in big endian form, while the
@@ -754,29 +1342,214 @@ in software, and therefore lose cycles. \\
 % https://github.com/jeffreycassidy/BlueLink/blob/master/Core/Endianness.bsv 
 
 % TODO: C padding - citations
-Naturally, C structures are padded and aligned, where 4-byte variables are
-aligned to the nearest 4-bytes. Previous variables are extended in size in
-accordance to this padding. To ensure cleanliness 
+Naturally, C structures are padded and aligned, where N-byte variables are
+aligned to the nearest N-byte block. Variables in a struct are extended in size
+in accordance with this padding. A structure in BSV is unpadded, and as such, it
+is vital to ensure that the structure has no padding within our C code for when
+it is written to the peripheral.
 
-\subsection{Functional Unit Design}
+\section{Hardware floating point operations}
+\subsection{Fixed/Floating Point}
+We have a decision to implement calculations with rational numbers using either
+fixed-point, or floating-point.
+
+GCC has built-in support for fixed-point arithmetic.
+
+\subsection{Bluespec Verilog FloatingPoint}
+% TODO: Introduce/explain floating-points in BSV
 BSV contains a FloatingPoint library. Modules already exist for addition and
-multiplication which extend the Server module. 
+multiplication which are polymorphic, extending the Server interface. The most
+simple is the floating point adder module. The Server interface in Bluespec
+makes use of an internal Put interface for a request, and a Get interface for a
+response.
 
-We can put a request, and after some number of clock cycles, get a response.
+The floating point modules are paremetised by the precision of our desired floating
+point format. Naturally, we use the IEEE754 32-bit floating point standard, with a 1-bit sign,
+23-bit significand and 8-bit exponent. We therefore make use of our own
+single-precision floating-point datatype \texttt{FSingle}. For the sake of
+convenience, we also define the datatype for the associated response, containing
+a two element tuple of our result, and an exception.
 
-\subsubsection{Fused Multiply-Accumulate}
+By making use of the server interface, we can we can put a request containing a
+3-element tuple of our operands and the appropriate floating point rounding mode
+to our floating point adder. After 6 clock cycles, we obtain a response. A test
+implementation of this is shown below: \\
+
+\tiny
+\begin{verbatim}
+import GetPut :: *;
+import ClientServer :: *;
+import FloatingPoint :: *;
+
+typedef FloatingPoint#(8,23) FSingle;
+typedef Tuple2#( FSingle, FloatingPoint::Exception ) FpuR;
+
+module mkFPAddTest(Empty);
+   Reg#(UInt#(8)) cycle <- mkReg(0);
+   rule rl_cycle(cycle < 255);
+      cycle <= cycle + 1;
+   endrule
+
+   Server# (Tuple3# (FSingle, FSingle, RoundMode)
+            , FpuR ) fpu_add <- mkFloatingPointAdder;
+   rule rl_start(cycle == 0);
+      FSingle opd1 = 1.0;
+      FSingle opd2 = -2.0;
+      fpu_add.request.put(tuple3(opd1, opd2, defaultValue));
+      $display("%2d: Start", $time);
+   endrule
+
+   rule rl_end;
+      match { .res, .exc } <- fpu_add.response.get();
+      $display("%2d: Result: %h", $time, pack(res)); 
+      $finish(0);
+   endrule
+endmodule
+
+// OUTPUT:
+// 10: Start
+// 70: Result: bf800000
+\end{verbatim}
+\normalsize
+
+% TODO: Pipeline --- diagram
+We propose that the pipelined nature of the floating point units offered by the
+Bluespec FloatingPoint library should offer a significant speedup. Provided that
+the pipeline of the unit is fully occupied, it is possible to retrieve the result
+of a floating point operation in every cycle. This feature will later be
+exploited to greatly reduce the number of compute cycles within an individual
+functional unit.
+
+% TODO: Move to evaluation (?)
+In order to simulate our simple module, we make use of Bluesim. Our Bluespec
+Verilog is compiled directly into an executable, with no need to write a
+testbench program in C++ as is required by Verilator. 
+
+\section{Functional Unit Design}
+The base compute unit that executes an issued command is known as a functional
+unit. In the context of matrix multiplication, a single functional unit is
+responsible for calculating a single element in the final matrix $C = AB$, by
+calculating the dot product between the ith row of A, and the jth column of B,
+as follows: $C_{ij} = A_{ik}B_{kj} = \text{row}(A,i) \cdot \text{col}(B,j)$.
+This involves adding the pairwise result of multiplications to an accumulator.
+
+\subsection{Fused Multiply-Accumulate}
+We make use of a floating-point fused multiply-accumulate module. These are used
+for addition and multiplication within the FPU of a processor. This allows the
+floating-point operation $(a*b)+c$ to be performed with only a single rounding
+step, thus saving compute cycles.
+
+The simplest functional unit should take $11N$~cycles per element for an
+$N$~element vector. 
+
+% TODO: FMA diagram
+% TODO: Explain how FMA works and advantages...
+% TODO: Explain design decisions
+
+\subsection{Pipelined Multiplication with Addition}
+We observe that the pipeline is not at maximum occupancy using an FMA unit. This
+is because we need to feed the accumulator result back into the multiplier when
+computing the accumulated product of the next two elements. As a consequence, we
+waste $10N$~cycles throughout the computation.
+
+We observe that by having an internal buffer of memory within our functional
+unit, we can pipeline our floating point multiplications. By accumulating our
+result using a floating point adder, we observe that addition will take $4N$
+cycles, while the pipelined multiplication will take $11+N$ cycles.
 
 
-\subsubsection{Pipelined Multiplication with Addition}
-\subsubsection{Pipelined Multiplication \& Pairwise Addition}
-\subsubsection{Predicted Performance}
+\subsection{Pipelined Multiplication \& Pairwise Addition}
+In an attempt to maximise the occupancy of the addition pipeline, we propose
+reductive pairwise addition of the elements in the buffer. In our first stage,
+we perform pipelined multiplication of our elements into a buffer. We then
+perform pipelined addition of pairs of elements 
+
+
+
+\subsection{Summary of Predicted Performance}
 % Unit Design: TODO: Include diagram
+
+\begin{align*}
+  T_{FMA}(N) &= (10+1)N \\
+             &= 11N \\
+  T_{PMA}(N) &= max(11+N, 4N) \\
+               &= 15 + 5N \\
+  T_{PMPA}(N) &= max(10+N, 11+2\frac{N}{2} + \frac{N}{4} + ... + 16) \\
+               &= 2N+27 
+\end{align*}
+
 
 % Unit: Memory Parallelism
 % Unit: Memory Banking:
 
-\subsection{Multiple Functional Units}
-% TODO: Naive. READ/WRITE ports
+\subsection{Multiple Functional Units \& Multi-ported memory}
+% TODO: Verify this
+We observe that the rate at which we issue instructions to the accelerator is
+superceded by the compute speed of the functional unit. Crucially, our firmware
+is stalls its execution and waits for the accelerator to complete its task
+before issuing a new instruction.
+
+We seek to exploit the paralellism offered in hardware design by duplicating our
+functional units, and issuing commands to different units sequentially. Keeping
+our processor occupied, avoiding stalling and maximising throughput.
+
+A standard BRAM RegFile in BSV has 2 read ports and 1 write port. As such, in a
+single clock cycle it is only possible to read from two random access locations,
+and write to one location. Thus, we must modify the architecture of our memory
+to support multiply functional units.
+
+\scriptsize
+\begin{verbatim}
+ Error: "MultiPortBRAM.bsv", line 18, column 37: (G0002)
+ `pmem_mem_0.sub' needs more than 5 ports for the following uses:
+ `pmem_mem_0.sub a__h30554' at "MultiPortBRAM.bsv", line 18, column 37
+ `pmem_mem_0.sub a__h31995' at "MultiPortBRAM.bsv", line 18, column 37
+ `pmem_mem_0.sub a__h32028' at "MultiPortBRAM.bsv", line 18, column 37
+ `pmem_mem_0.sub a__h32061' at "MultiPortBRAM.bsv", line 18, column 37
+ `pmem_mem_0.sub a__h32094' at "MultiPortBRAM.bsv", line 18, column 37
+ `pmem_mem_0.sub a__h32127' at "MultiPortBRAM.bsv", line 18, column 37
+\end{verbatim}
+\normalsize
+We observe that the standard BSV RegFile, has a maximum of 5 read ports, and 1 write port.
+
+We exploit the 'generics' in BSV, and create our own MultiPortedMemory module.
+
+Our vector of RegFiles will allocate seperate RegFiles at different locations on
+the FPGA fabric. They may be accessed in parallel. 
+
+The BSV interface for our MultiPortBRAM module is similar to the RegFile module.
+However, the type has an extra parameter, n, representing the number of memory
+channels.
+
+The multi-ported memory has only one write port, but $2N$ read ports. This is
+because it contains $N$ channels of RegFile BRAM. 
+
+\scriptsize
+\begin{verbatim}
+interface MultiPortBRAM#(type addr, type data, numeric type n);
+   method Action upd(addr a, data x);
+   method ActionValue#(data) sub(Bit#(8) bank, addr a);
+endinterface
+module mkMultiPortBRAM(MultiPortBRAM#(addr, data, n))
+provisos(
+   Bits#(addr, addr_sz),
+   Bits#(data, data_sz),
+   Bounded#(addr)
+   );
+   // Create N channels of memory
+   Vector#(n, RegFile#(addr, data)) mem <- replicateM(mkRegFileWCF(minBound, maxBound));
+   method Action upd(addr a, data x);
+      for(Integer i=0; i<valueOf(n); i=i+1)
+         mem[i].upd(a, x); // Update ALL internal memory channels
+   endmethod
+   // Read from the channel with index 'bank'.
+   method ActionValue#(data) sub(Bit#(8) bank, addr a);
+      return mem[bank].sub(a);
+   endmethod
+endmodule
+endpackage
+\end{verbatim}
+\normalsize
 
 
 % TODO: Evaluation of results: ~10x faster
@@ -784,30 +1557,57 @@ We can put a request, and after some number of clock cycles, get a response.
 % 
 
 % TODO: Jesus...
-\subsection{Multi-Ported Memory}
 
 % What is a Regfile, What is BlockRam? What is SRAM?
-We observe that a RegFile, has a maximum of 5 read ports, and 1 write port.
-Typically, BRAM, has 2 read ports, and 1 write port.
 
-% Error: "MultiPortBRAM.bsv", line 18, column 37: (G0002)
-% `pmem_mem_0.sub' needs more than 5 ports for the following uses:
-% `pmem_mem_0.sub a__h30554' at "MultiPortBRAM.bsv", line 18, column 37
-% `pmem_mem_0.sub a__h31995' at "MultiPortBRAM.bsv", line 18, column 37
-% `pmem_mem_0.sub a__h32028' at "MultiPortBRAM.bsv", line 18, column 37
-% `pmem_mem_0.sub a__h32061' at "MultiPortBRAM.bsv", line 18, column 37
-% `pmem_mem_0.sub a__h32094' at "MultiPortBRAM.bsv", line 18, column 37
-% `pmem_mem_0.sub a__h32127' at "MultiPortBRAM.bsv", line 18, column 37
 
 \subsubsection{Memory Striping}
+% TODO: Alternative proposition --- bank/striped memory
+% TODO: Put in further work
+% Difficult to apply appropriate backpressure, --- perhaps look into further (Conclusion)
 
-\subsection{Rule conflicts, rapid execution}
 
-% TODO: UNKNOWN TIMINGS?:
-% TODO: Cycle count / byte read in IO memory (when bypassing the cache!?)
-% TODO: CACHE R/W speed!?
+\chapter{Matrix Multiplication Peripheral: Evaluation}
+\section{Methodology}
+\subsection{Benchmarking \& Counting cycles}
+From the Risc-V specification, we take a look at the mcycles and minstret
+registers. We observe that it is possible to read from CSRs by running the
+appropriate instructions within Risc-V assembly. We therefore make use of inline
+assembly.
+% TODO: Include read CSR safe
 
-\section{Commmunication \& Memory Bottleneck}
+\section{Results}
+\subsection{Functional Unit Type}
+
+\subsection{Functional Unit Parallelism}
+
+\subsection{Software Buffering}
+% TODO: conditions
+\begin{table}
+  \centering
+  \begin{tabular}{r|rr}
+    \toprule
+    Units & Peripheral & Processor\\
+    \midrule
+    0  &     ? & 21500 \\
+    1  & 13366 & 13596 \\
+    2  &  6817 &  7085 \\
+    4  &  3670 &  3954 \\
+    8  &  2621 &  2889 \\
+    12 &  2666 &  2929 \\
+    16 &  2633 &  2916 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Overhead: Buffer cycles: 723. Copy cycles: 4984}
+\end{table}
+
+\subsection{Hardware Buffering}
+
+\subsection{Synthesis}
+
+
+
+\chapter{Commmunication \& Memory Bottleneck}
 \subsection{Protocol efficiency/optimisation}
 % Analysis of struct packing
 % Attribute ((packed))
@@ -832,29 +1632,25 @@ Typically, BRAM, has 2 read ports, and 1 write port.
 % In hardware
 % Accelerator buffer/program counter. (Internal stack)
 
-\begin{table}
-  \centering
-  \begin{tabular}{r|rr}
-    \toprule
-    Units & Peripheral & Processor\\
-    \midrule
-    0  &     ? & 21500 \\
-    1  & 13366 & 13596 \\
-    2  &  6817 &  7085 \\
-    4  &  3670 &  3954 \\
-    8  &  2621 &  2889 \\
-    12 &  2666 &  2929 \\
-    16 &  2633 &  2916 \\
-    \bottomrule
-  \end{tabular}
-  \caption{Overhead: Buffer cycles: 723. Copy cycles: 4984}
-\end{table}
 
 \subsection{Firmware Stalling/Interrupts}
 \subsection{Instruction jumping}
-\subsection{Hardware Command Buffering}
+% Will not work (peculiarities with instruction \$)
 
-\subsection{64-bit}
+\subsection{Hardware Command Buffering}
+% Very high savings --- best for small matrices, --- 32~ elements
+% TODO: Fix
+
+\subsection{Rule conflicts, rapid execution}
+
+
+% TODO: UNKNOWN TIMINGS?:
+% TODO: Cycle count / byte read in IO memory (when bypassing the cache!?)
+% TODO: CACHE R/W speed!?
+\subsection{Other ideas}
+
+
+
 
 \begin{verbatim}
 // MMIO PC
@@ -905,13 +1701,6 @@ Meme!
 
 
 
-\chapter{Evaluation} 
-\section{Methodology}
-\subsection{Benchmarking \& Counting cycles}
-From the Risc-V specification, we take a look at the mcycles and minstret
-registers
-.
-\subsection{Synthesis}
 
 \section{Accelerator}
 % TODO: Example + study (Evaluation)
@@ -920,10 +1709,10 @@ registers
 % Cannot exploit pipelined nature of unit.
 % Faster than individual FP multiply, then add. 10 cycles vs 14 cycles.
 
-%  10: FSM Start
-%  20: Init
-%  40: PUT: 00000000 40800000 40800000
-%  40: STATE_LOCK
+% 10: FSM Start
+% 20: Init
+% 40: PUT: 00000000 40800000 40800000
+% 40: STATE_LOCK
 % 140: 0: MulAcc Result: 41800000
 % 140: STATE_READY
 % 150: PUT: 41800000 40800000 40800000
@@ -943,14 +1732,6 @@ registers
 
 \subsection{}
 
-\begin{align*}
-  T_{Naive}(N) &= 11+N + 4N \\
-  &= 15 + 5N \\
-  T_{FMA}(N) &= (10+1)N \\
-             &= 11N \\
-  T_{TADD}(N) &= max(10+N, 11+2\frac{N}{2} + \frac{N}{4} + ... + 16) \\
-             &= 2N+27 
-\end{align*}
 
 % TODO: ARM Cortex benchmark
 
@@ -969,10 +1750,18 @@ registers
 
 % NOTE: Reflect on lessons learnt - 
 
+% Future Work
+% Further work towards Synthesis --- make use of external DDR3 memory
+% Implement Risc-V 'V' extensions
+
 \appendix
 \singlespacing
 
 \bibliographystyle{unsrt} 
-%\bibliography{dissertation} 
+% \bibliography{dissertation} 
+
+% Bibliography:
+% RISC-V GCC, ISA, Spike
+% BSV Reference Guide
 
 \end{document}

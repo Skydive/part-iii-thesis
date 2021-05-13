@@ -196,11 +196,7 @@ void mat_test() {
 
 }
 
-void main() {
-  print("Hello, world!\n");
-  mstatus_init();
-  init_stack();
-
+void accel_hw_test() {
   uint32_t time0, time1;
   uint16_t busy_bits;
   float* ptr_a_addr = (float*)accel_malloc(sizeof(stack_mat_a)/sizeof(float));
@@ -246,6 +242,16 @@ void main() {
   printf("Time taken: %d\n", time1-time0);
   for(int i=0; i<16; i++)
     printf("0x%X -> %2.f\n", &ptr_c_addr[i], ptr_c_addr[i]);
+  
+}
+
+void main() {
+  print("Hello, world!\n");
+  mstatus_init();
+  init_stack();
+
+  main_test();
+
 }
 void irqCallback() {
 }
