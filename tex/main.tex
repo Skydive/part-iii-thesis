@@ -110,7 +110,7 @@
 % Wrote functioning bare-metal firmware for a RiscV CPU
 % Minimise dependence on proprietary and closed-source software + toolchains
 
-% Accelerator: VLIW/Superscalar execution
+% Accelerator: VLIW/Superscalar execution (?)
 
 % Bluespec: Customisable number of functional units, varying silicon area.
 % In the best case, obtained an approx 10x speed-up through hardware buffered
@@ -1127,8 +1127,9 @@ that forwards data between all 35 AXI4 wires. As shown below:
 
 \subsubsection{AXI4 Alignment/Padding}
 Due to the structure of the AXI4 bus and the way a processor writes to memory,
-data must be aligned appropriately. A 32-bit AXI4 bus may only access an aligned
-4-byte block per request. As a consequence, it is possible to fail
+data stored in memory must be aligned depending on its size.
+A 32-bit AXI4 bus may only access at most a single aligned
+4-byte block per read/write request. As a consequence, it is possible to fail
 writing/reading from memory when crossing the block boundary.
 
 % TODO: Include image
@@ -1434,13 +1435,21 @@ as follows: $C_{ij} = A_{ik}B_{kj} = \text{row}(A,i) \cdot \text{col}(B,j)$.
 This involves adding the pairwise result of multiplications to an accumulator.
 
 \subsection{Fused Multiply-Accumulate}
-We make use of a floating-point fused multiply-accumulate module. These are used
+We make use of a floating-point fused multiply-accumulate (FMA) module. These are used
 for addition and multiplication within the FPU of a processor. This allows the
 floating-point operation $(a*b)+c$ to be performed with only a single rounding
 step, thus saving compute cycles.
 
-The simplest functional unit should take $11N$~cycles per element for an
-$N$~element vector. 
+An FMA unit saves cycles compared to an individual floating-point multiplier and
+adder circuit, as it only performs the floating-point rounding procedure once
+both the multiplication and addition procedures have completed.
+
+The simplest functional unit consisting of a fused-multiply accumulate circuit
+should take $11N$~cycles per element for an $N$~element vector.
+
+
+
+
 
 % TODO: FMA diagram
 % TODO: Explain how FMA works and advantages...
@@ -1454,7 +1463,7 @@ waste $10N$~cycles throughout the computation.
 
 We observe that by having an internal buffer of memory within our functional
 unit, we can pipeline our floating point multiplications. By accumulating our
-result using a floating point adder, we observe that addition will take $4N$
+result using a floating point adder, we observe that addition will take $6N$
 cycles, while the pipelined multiplication will take $11+N$ cycles.
 
 
@@ -1472,8 +1481,8 @@ perform pipelined addition of pairs of elements
 \begin{align*}
   T_{FMA}(N) &= (10+1)N \\
              &= 11N \\
-  T_{PMA}(N) &= max(11+N, 4N) \\
-               &= 15 + 5N \\
+  T_{PMA}(N) &= max(11+N, 6N) \\
+               &= 15 + 7N \\
   T_{PMPA}(N) &= max(10+N, 11+2\frac{N}{2} + \frac{N}{4} + ... + 16) \\
                &= 2N+27 
 \end{align*}

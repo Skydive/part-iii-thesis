@@ -31,7 +31,6 @@ typedef union tagged {
    } MRequestUT deriving (Eq, Bits);
 
 
-Integer max_alloc_size = 32;
 
 (* synthesize *)
 module mkZipReduceServer(Server#(MRequestUT, FSingle));
