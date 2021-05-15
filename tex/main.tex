@@ -19,9 +19,8 @@
 \def\authorname{Khalid Aleem\xspace}
 \def\authorcollege{Trinity College\xspace}
 \def\authoremail{ka476@cam.ac.uk}
-\def\dissertationtitle{Maximising throughput between a Risc-V microprocessor and
-  linear algebra co-processor.}
-%\def\dissertationtitle{A Risc-V based co-processor peripheral to accelerate CNN inference.}
+\def\dissertationtitle{A Risc-V based co-processor to accelerate linear algebra operations.}
+% TODO: LOOK INT LACore...
 % Maximising throughput for a Risc-V linear algebra co-processor.
 % XXX: Project title changes: no later than 21 May 2021 16:00 
 \def\wordcount{3,860}
@@ -447,12 +446,18 @@ Code may be written in Scala to generate hardware.
 % All types are first-class --> functions can be used as arguments/parameters of
 % other functions and modules.
 
+% Static & dynamic elaboration
 
 % BSV --> Bluesim (small simulations)
 % BSV --> Verilog RTL --> Verilator / Synthesis
 
 % Example code / Comparisons
 % Benefits
+
+% TODO: Cite https://dl.acm.org/doi/abs/10.1109/MEMCOD.2004.1459818 
+
+
+% TODO: Talk about SystemC \& HLS...
 
 \chapter{Related Work} 
 \section{BlueVec}
@@ -496,6 +501,8 @@ external memory bandwidth through the use of burst memory access to stream data
 from external memory at a very high rate.
 
 % TODO: Lane-local memories / Pipelining
+% Each thread has its own LANE. --- Similar to multi-channel memory.
+
 In order to maximise the clock frequency of the BlueVec processor, and therefore
 maximise throughput, the BlueVec processor pipelines operand fetching,
 instruction execution and result writeback. This reduces the length of the
@@ -541,7 +548,7 @@ improvements demonstrated by BlueVec for vector processing.
 
 % TODO: ZynqNet - Literature Review
 % NOTE: ZynqNet --- too SPECIFIC, NN architecture needed beforehand.
-\section{ZynqNet}
+%\section{ZynqNet}
 
 % TODO: Read ZynqNet Paper
 % How to contextualise!?
@@ -559,6 +566,36 @@ improvements demonstrated by BlueVec for vector processing.
 
 
 % TODO: ARM Neon / Risc-V 'V' extension
+% Why is ratification slow --- needs to be done CORRECTLY!
+% Think about future support, backwards compatability.
+% Some applications only need one part of it.
+% Neon SSE/AVX
+% Neon is defined within ARM ISA
+% Very heavyweight --- complex decoding logic, lots of instructions
+% ARM isn't truly RISC. --- SIMD extensions
+
+% speciality --- linear algebra - dot products. Lots of writing/reading. Gain
+% order of magnitude efficiency for SPECIFIC matrix multiplication.
+% NN, 
+
+% BlueVec --- decoupled accelerator that has its OWN ISA + instruction
+% interface
+% 
+
+
+% VLIW 
+
+% Lots of GPU acceleration of linear algebra acceleration 
+% Big takeaway - unless super specific problem --- communication bottleneck
+% existed
+% Whole computation must be performed in GPU memory --- constrained
+
+% Tightly coupled Accelerator+CPU. General programmability + fixed hardware. Low
+% latency between each.
+
+% TODO: Look at Linpack library
+% https://link.springer.com/article/10.1007/s11390-011-0184-1
+
 \section{SIMD}
 The Risc-V ISA has the (\textbf{V}) extension to support vector instructions.
 That is, instructions that operate on a contiguous region of memory. The ISA
@@ -610,6 +647,9 @@ The Piccolo processor has a 3-stage in-order pipeline and may be configured to b
 % Unit duplication - special memory & wire connections!
 % 
 
+% MMAP - ARM & RiscV
+
+% 
 
 % RegFile vs Vector#(Reg#()) vs BRAM
 
@@ -1471,7 +1511,16 @@ cycles, while the pipelined multiplication will take $11+N$ cycles.
 In an attempt to maximise the occupancy of the addition pipeline, we propose
 reductive pairwise addition of the elements in the buffer. In our first stage,
 we perform pipelined multiplication of our elements into a buffer. We then
-perform pipelined addition of pairs of elements 
+perform pipelined addition of pairs of elements.
+
+The recursive algorithm only works cleanly when the size of our buffer is a
+multiple of two. A naive implementation would therefore waste processing cycles
+performing pairwise additions of 
+
+This is where Bluespec Verilog shines. 
+
+It would be an excruciatingly difficult process to write this in standard
+Verilog HDL. 
 
 
 
@@ -1484,8 +1533,7 @@ perform pipelined addition of pairs of elements
   T_{PMA}(N) &= max(11+N, 6N) \\
                &= 15 + 7N \\
   T_{PMPA}(N) &= max(10+N, 11+2\frac{N}{2} + \frac{N}{4} + ... + 16) \\
-               &= 2N+27 
-\end{align*}
+               &= 2N+27  
 
 
 % Unit: Memory Parallelism

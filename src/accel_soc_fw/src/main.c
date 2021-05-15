@@ -251,6 +251,7 @@ void main() {
   init_stack();
 
   main_test();
+  accel_hw_test();
 
 }
 void irqCallback() {

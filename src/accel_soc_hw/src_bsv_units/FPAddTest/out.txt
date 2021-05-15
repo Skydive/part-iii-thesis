@@ -1,0 +1,2 @@
+10: Start
+70: Result: bf800000

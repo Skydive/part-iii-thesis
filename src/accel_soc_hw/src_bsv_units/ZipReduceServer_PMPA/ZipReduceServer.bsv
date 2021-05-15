@@ -97,6 +97,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
       rem_free <= True;
    endrule
    Reg#(UInt#(16)) ar_count <- mkReg(0);
+
    rule rl_pairwise_add_resp(state == STATE_ADD); // No simultaneous buffer access...
       match { .res, .exc } <- fpu_add.response.get();
       $display("%3d:%2d:%2d Add Result: %h", $time, ar_count, m_count, pack(res));
