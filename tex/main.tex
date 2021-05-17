@@ -20,6 +20,7 @@
 \def\authorcollege{Trinity College\xspace}
 \def\authoremail{ka476@cam.ac.uk}
 \def\dissertationtitle{A Risc-V based co-processor to accelerate linear algebra operations.}
+%\def\dissertationtitle{A Risc-V based co-processor to accelerate linear algebra operations.}
 % TODO: LOOK INT LACore...
 % Maximising throughput for a Risc-V linear algebra co-processor.
 % XXX: Project title changes: no later than 21 May 2021 16:00 
@@ -597,12 +598,37 @@ improvements demonstrated by BlueVec for vector processing.
 % https://link.springer.com/article/10.1007/s11390-011-0184-1
 
 \section{SIMD}
+\subsection{Risc-V Vector ISA extension}
 The Risc-V ISA has the (\textbf{V}) extension to support vector instructions.
 That is, instructions that operate on a contiguous region of memory. The ISA
-extension specifies the existence of vector registers, 
+extension specifies the existence of vector registers which may be some power of
+2 larger than a traditional 4-byte (32-bit) register. Mathematical operations
+may then be simultaneously applied to groups of numbers loaded in these vector
+register.
 
 Crucially, the Risc-V vector extension has not yet been ratified. As such, its
-features may change, and it is unwise to implement the instructions.
+features may change, and it is unwise to implement the instructions as the ISA
+may undergo breaking changes. Moreover, The vector ISA extension consists of 184
+additional instructions, exceeding the preexisting 129 instructions in the
+RV32IMAFC combination. A very substantial modification to the decode and
+execution sections of the processor will need to be made at the cost of a great
+deal of silicon space. Even if the ISA is implemented, compilers do not yet support producing vector instructions in machine code.
+
+
+\subsection{ARM Neon/x86 SSE,AVX}
+% TODO: elaborate - what are the key disadvantages
+% TODO: Small subsection at top of SIMD!?
+The AVX-512 instruction set extension
+consists of 16 x 4 byte, or 512-bit, registers
+
+Perhaps the principal disadvantage of vector ISAs is that a small subset of the
+ISA is required to accelerate a particular task at hand. While it is necessary
+for the entire ISA to be implemented at the cost of both silicon surface and
+power efficiency.
+
+
+
+
 
 
 \section{Open Source Cores}
@@ -620,7 +646,8 @@ The Freedom E310 is a Risc-V SoC designed by the company SiFive
 
 The Piccolo processor takes full advantage of the modular nature of processor
 design that is made possible through the use of Bluespec Verilog. 
-The Piccolo processor has a 3-stage in-order pipeline and may be configured to be 32-bits.
+The Piccolo processor has a 3-stage in-order pipeline and may be configured as
+either 32 or 64 bits.
 
 %\chapter{Design and Implementation}
 % NOTE: Main contribution to (the field?)
@@ -695,6 +722,9 @@ functions, such as \texttt{pow}, and \texttt{sqrt}. The relevant machine code
 for these functions are statically linked, and the code within our final binary
 ELF is entirely self-contained. This can be seen in the section layout of our
 produced ELF file.
+
+Due to the 32-bit configuration of the Piccolo processor that we are using, we
+must restrict GCC to using 32-bit instructions, and 
 
 Relevant sections of our final ELF file: We have a $64$~KB stack, and statically
 linked functions from newlib.  
@@ -1534,7 +1564,7 @@ Verilog HDL.
                &= 15 + 7N \\
   T_{PMPA}(N) &= max(10+N, 11+2\frac{N}{2} + \frac{N}{4} + ... + 16) \\
                &= 2N+27  
-
+\end{align*}
 
 % Unit: Memory Parallelism
 % Unit: Memory Banking:
