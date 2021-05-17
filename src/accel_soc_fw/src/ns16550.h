@@ -30,10 +30,10 @@
 
 #include <stdint.h>
 
-struct device {
+struct device_t {
 	uintptr_t addr;
 };
 
-void vOutNS16550( struct device *dev, unsigned char c );
+void vOutNS16550( struct device_t *dev, unsigned char c );
 
 #endif /* NS16550_H_ */
