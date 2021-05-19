@@ -45,11 +45,11 @@
   xleftmargin=\parindent,
   language=C,
   showstringspaces=false,
-  basicstyle=\footnotesize\ttfamily,
+  basicstyle=\footnotesize\ttfamily\color{black},
   keywordstyle=\bfseries\color{blue!40!black},
   commentstyle=\itshape\color{purple!40!black},
   stringstyle=\color{green!40!black},
-  morekeywords={uint32_t,uint8_t}
+  morekeywords={uint32_t,uint8_t,uintptr_t,intptr_t}
 }
 
 \lstdefinestyle{customcpp}{
@@ -153,7 +153,7 @@ instruction sets are bloated, needing to maintain necessary backwards
 compatibility --- in many cases a modern ARM CPU will contain redundant
 instructions, and therefore redundant logic and complexity that is unnecessary.
 
-The Risc-V ISA is modular, and can be partitioned into various extensions. Of
+In contrast, the Risc-V ISA is modular, and can be partitioned into various extensions. Of
 notable interest are the 49 (\textbf{I}) 32-bit integer instructions, 11
 (\textbf{A}) atomic instructions, 36 (\textbf{C}) 16-bit compressed instructions, 8
 (\textbf{M}) instructions for integer multiplication and division, and 25
@@ -172,24 +172,26 @@ and superfluous hardware.
 
 % TODO: Risc-V cite: https://www2.eecs.berkeley.edu/Pubs/TechRpts/2014/EECS-2014-146.html 
 Since the publication of the Risc-V ISA, a variety of different open source
-processors have been designed that are based on the open standard Risc-V ISA.
-The source code of these processors is publically available, with a range of
-different designs available on GitHub.
+processors have been designed. The source code of these processors is publically
+available, with a range of different designs available on GitHub. 
 
 Collaboration and open source processor
-design has a range of additional benefits in architectural security. This is of
+design has a range of additional benefits in hardware security. This is of
 particular relevance in the light of severe hardware-level vulnerabilities found
 in the majority of ARM and x86\_64 processors in production, namely Spectre, and
 Meltdown. With processor designers and manufacturers paying less attention to
 verifying the security of their devices whilst competing with each other to
-maximise processor throughput. Open source processor development allows for
-processor designs to be verified by a community of different organisations, and
-By basing our work on an open source processor in the development of our
-peripheral, we benefit substantially from these security considerations.
+maximise processor throughput, the design of processors is not subject to enough
+scrutiny within the development process. Open source processor development
+provides the opportunity for processor designs to be verified by a community of
+different organisations, reducing the likelihood that architectural level
+attacks can be performed. By basing our work on an open source processor in the
+development of our peripheral, we benefit substantially from these security
+considerations.
 
-When designing a peripheral, it is vital to possess an understanding of the
-processor that it is connected to. Using an open source processor gives us
-greater freedom, allowing us to pry into the internals, and analyse the
+Moreover, when designing a peripheral, it is vital to possess an understanding
+of the processor that it is connected to. Using an open source processor gives
+us greater freedom, allowing us to pry into the internals, and analyse the
 specifics of processor behaviour if things behave in an unexpected manner.
 
 
@@ -289,6 +291,7 @@ The first stage of synthesis involves compiling Verilog HDL into a netlist.
 A netlist is a complete description of a digital circuit at the logic gate
 level, containing all of the information a schematic would, but in a structured
 format that is easier for a computer to process.
+
 The second stage involves a process known as place and route. Different FPGAs
 have different architectures and designs, with varying numbers of logic cells
 and logic cell types. Place and route involved running an algorithm, targetting
@@ -608,11 +611,17 @@ register.
 
 Crucially, the Risc-V vector extension has not yet been ratified. As such, its
 features may change, and it is unwise to implement the instructions as the ISA
-may undergo breaking changes. Moreover, The vector ISA extension consists of 184
+may undergo breaking changes. Ratification is a time consuming process. The
+Risc-V foundation needs to be certain that the definition of the ISA extension
+is infallible, where considerations of backwards compatability and the necessity of
+the proposed instructions are verified by a group of experts.
+
+Moreover, The vector ISA extension consists of 184
 additional instructions, exceeding the preexisting 129 instructions in the
 RV32IMAFC combination. A very substantial modification to the decode and
 execution sections of the processor will need to be made at the cost of a great
-deal of silicon space. Even if the ISA is implemented, compilers do not yet support producing vector instructions in machine code.
+deal of silicon space. Even if the ISA is implemented, compilers do not yet
+support producing vector instructions in machine code.
 
 
 \subsection{ARM Neon/x86 SSE,AVX}
@@ -635,14 +644,17 @@ power efficiency.
 % Since we seek to minimise the use of proprietary, and closed-source libraries.
 
 \subsection{Rocket}
+% TODO: talk about Rocket
 The Rocket processor is writteh in ChiselHDL
 % TODO: Rocket RoCC
+% TODO: Cite paper
 
-% Freedom E310
+% TODO: Mention Freedom E310
 The Freedom E310 is a Risc-V SoC designed by the company SiFive
 
 \subsection{Piccolo}
-% MIT TOOOBA project
+% TODO: MIT TOOOBA project
+% TODO: Cite paper
 
 The Piccolo processor takes full advantage of the modular nature of processor
 design that is made possible through the use of Bluespec Verilog. 
@@ -656,29 +668,14 @@ either 32 or 64 bits.
 % NOTE: Compare the design to BlueVec!?
 
 % NOTE: Challenging goals - substantial deliverables
-
 % NOTE: Design decisions
 
 % RV32imafc - bare metal ELF
-% Spike, proxy kernel
+% Spike, proxy kernel?
 
 % Cost of movement... memory wall
 
-% Matrix multiplication
-% Naive implementation
-% Unit duplication NAIVE
-% Unit duplication - scheduling
-% Copy cost
-
-% ZipReduceUnitServer - improvements + bench
-% Unit duplication - special memory & wire connections!
-% 
-
 % MMAP - ARM & RiscV
-
-% 
-
-% RegFile vs Vector#(Reg#()) vs BRAM
 
 \chapter{SoC and Testbench Setup: Design \& Implementation}
 \section{SoC Design}
@@ -688,16 +685,15 @@ Bluespec Verilog offers superior scheduling capabilities compared to ChiselHDL,
 and standard Verilog. As such, we decide to use the Piccolo processor from the
 MIT TOOOBA family within our simulation and testbench. 
 
-
-%\subsection{AXI4 Protocol}
-% TODO: OR IN Test Peripheral (AXI4)
-% TODO: Background info/filler and origin
-\texttt{wstrb}
-% TODO: How is memory read/written from
-%The AXI4 protocol comes with the disadvantage of being able write a maximum of 4
-%bytes per request on 32-bit systems. Each request, orchestrated by the CPU,
-%spans multiple clock cycles.
-% TODO: To what extent does this 
+% TODO: Talk more about why we chose Piccolo
+% 3-stage inorder pipeline (low silicon area)
+% Physical Memory - no virtual memory
+% AXI4 bus configurability
+% CPU 64/32-bit
+% ISA extension customisability
+% IMAFC --- ALSO D, M ... etc
+% Will not boot a Linux Kernel, but FreeRTOS. Simple bare metal.
+% Ignore context switching
 
 \section{Risc-V Firmware}
 \subsection{Risc-V Assembly \& Firmware Structure}
@@ -852,7 +848,7 @@ global pointer to allow global pointer relative addressing of variables in our
 data section.
 
 
-\lstset{language=[RISC-V]Assembler}
+\lstset{language=[RISC-V]Assembler, style=customrv}
 \begin{lstlisting}
 .global crtStart
 .global main
@@ -973,7 +969,7 @@ The information we obtain about our processor trap can be matched to the
 specific address in assembly code that causes the error. In this particular
 case, the \texttt{flw} instruction is responsible for triggering an
 \texttt{ILLEGAL\_INSTRUCTION} exception.
-\begin{lstlisting}[language=C,style=customc]
+\begin{lstlisting}[language=C,style=customc],
   float a = 1.0f;
   // Assembly:
   // 80002276: lui a5, 0x80001
@@ -1203,13 +1199,13 @@ A 32-bit AXI4 bus may only access at most a single aligned
 writing/reading from memory when crossing the block boundary.
 
 % TODO: Include image
-For example, writing to an unaligned 4-byte region at the address $002$ crosses
-the boundary:
+For example, writing to an unaligned 4-byte region at the address $0x2-0x6$ crosses
+the $0x4$ boundary:
 \begin{verbatim}
-*((uint32_t\*)0xC0001002) = 1337;
+*((uint32_t*)0xC0001002) = 0x1337;
 Trap_Info { epc: 'h800022d6, exc_code: 'h6, tval: 'hc0001002 }
 TRAP EXC: STORE_AMO_ADDR_MISALIGNED
-*((uint32_t\*)0xC0001000) = 1337;
+*((uint32_t*)0xC0001000) = 0x1337;
 \end{verbatim}
 
 This is vital to keep in mind throughout writing to peripheral memory. An
@@ -1361,7 +1357,9 @@ more easily performed within the firmware of the embedded processor, without a
 significant perfomance penalty.
 
 \subsubsection{Memory Regions}
-We split our accelerator 
+We split our accelerator memory into seperate memory-mapped regions. We
+interface with our accelerator through the AXI4 bus by writing and reading from
+memory appropriately.  
 \begin{table}
   \centering
   \begin{tabular}{lll}
@@ -1376,15 +1374,26 @@ We split our accelerator
 \end{table}
 
 \subsubsection{Status}
-The first byte of our status memory is to monitor, and control execution from
-the accelerator.
+The first bit of our status register in memory exists to monitor the execution
+of the accelerator. In the situation that all functional units are occupied, a
+command that is issued to the accelerator will be ignored. It is therefore
+important to keep track of the internals of the acclerator and make sure that it
+is not at maximum utilisation when commands are issued. Within our firmware, we
+must check that there is at least one free functional unit before issuing a
+command, or else our commands will drop and the computation of our final matrix
+will not be correctly performed.
 
 \subsubsection{Control}
-We write our control command/instruction to the control memory bank. We then set out
-execute status bit, and the accelerator should run the appropriate command.
+We write our control command/instruction to the control register. This is
+discussed in greater detail in the following section. Once our command is
+written, it is executed by setting the execute status bit within the control
+register. The accelerator should then dispatch the appropriate command to one of
+its functional units if it is free.
 
 \subsubsection{Memory}
-% TODO: Data memory --- how?!
+Like the test peripheral, our data memory consists of memory mapped
+\texttt{RegFile} to make use of FPGA BRAM cells. In the later section, we modify
+the structure of the memory to support multiple functional units.
 
 \section{Command Issuing \& Decoding}
 \subsection{Format}
@@ -1392,6 +1401,24 @@ In the hybrid model of our accelerator, and individual command must be able to
 compute an individual element of our final matrix, C. As discussed earlier,
 matrices are stored linearly in memory. 
 
+\scriptsize
+\begin{verbatim}
+typedef struct {
+   LittleEndian#(Bit#(32)) addr;
+   LittleEndian#(Bit#(8)) offset;
+   LittleEndian#(Bit#(8)) stride;
+   } MatUnitPtr deriving (Eq, Bits, FShow);
+
+typedef struct {
+   LittleEndian#(Bit#(8)) unit;
+   LittleEndian#(Bit#(8)) count;
+   MatUnitPtr ptr_a;
+   MatUnitPtr ptr_b;
+   MatUnitPtr ptr_c;
+} MatUnitArgs deriving (Eq, Bits, FShow);
+
+\end{verbatim}
+\normalsize
 
 \subsection{Decoding}
 One of the principal problems encountered between issuing a command containing
@@ -1423,6 +1450,8 @@ it is written to the peripheral.
 \subsection{Fixed/Floating Point}
 We have a decision to implement calculations with rational numbers using either
 fixed-point, or floating-point.
+
+% TODO: Why FP over FixedP 
 
 GCC has built-in support for fixed-point arithmetic.
 
@@ -1479,7 +1508,7 @@ endmodule
 
 // OUTPUT:
 // 10: Start
-// 70: Result: bf800000
+// 70: Result: bf800000 (-1.0)
 \end{verbatim}
 \normalsize
 
@@ -1504,7 +1533,7 @@ calculating the dot product between the ith row of A, and the jth column of B,
 as follows: $C_{ij} = A_{ik}B_{kj} = \text{row}(A,i) \cdot \text{col}(B,j)$.
 This involves adding the pairwise result of multiplications to an accumulator.
 
-\subsection{Fused Multiply-Accumulate}
+\subsection{Fused Multiply-Accumulate (FMA)}
 We make use of a floating-point fused multiply-accumulate (FMA) module. These are used
 for addition and multiplication within the FPU of a processor. This allows the
 floating-point operation $(a*b)+c$ to be performed with only a single rounding
@@ -1515,62 +1544,116 @@ adder circuit, as it only performs the floating-point rounding procedure once
 both the multiplication and addition procedures have completed.
 
 The simplest functional unit consisting of a fused-multiply accumulate circuit
-should take $11N$~cycles per element for an $N$~element vector.
+should take $11$~cycles per element for an $N$~element vector.
 
+% Cannot exploit pipelined nature of unit.
+% Faster than individual FP multiply, then add. 10 cycles vs 14 cycles.
 
-
+% TODO: move to eval
+% 10: FSM Start
+% 20: Init
+% 40: PUT: 00000000 40800000 40800000
+% 40: STATE_LOCK
+% 140: 0: MulAcc Result: 41800000
+% 140: STATE_READY
+% 150: PUT: 41800000 40800000 40800000
+% 150: STATE_LOCK
+% 250: 1: MulAcc Result: 42000000
+% 250: STATE_READY
+% 260: PUT: 42000000 40800000 40800000
+% 260: STATE_LOCK
+% 360: 2: MulAcc Result: 42400000
+% 360: STATE_READY
+% 370: PUT: 42400000 40800000 40800000
+% 370: STATE_LOCK
+% 470: 3: MulAcc Result: 42800000
+% 470: STATE_COMPLETE
+% 480: Output: 42800000
 
 
 % TODO: FMA diagram
 % TODO: Explain how FMA works and advantages...
 % TODO: Explain design decisions
 
-\subsection{Pipelined Multiplication with Addition}
+\subsection{Pipelined Multiplication with Addition (PMA)}
 We observe that the pipeline is not at maximum occupancy using an FMA unit. This
 is because we need to feed the accumulator result back into the multiplier when
 computing the accumulated product of the next two elements. As a consequence, we
-waste $10N$~cycles throughout the computation.
+waste $10N$~cycles throughout the computation for computing each element due to
+the fact that the pipelined nature of FP hardware is not fuly utilised.
 
 We observe that by having an internal buffer of memory within our functional
-unit, we can pipeline our floating point multiplications. By accumulating our
-result using a floating point adder, we observe that addition will take $6N$
-cycles, while the pipelined multiplication will take $11+N$ cycles.
-
-
-\subsection{Pipelined Multiplication \& Pairwise Addition}
-In an attempt to maximise the occupancy of the addition pipeline, we propose
-reductive pairwise addition of the elements in the buffer. In our first stage,
-we perform pipelined multiplication of our elements into a buffer. We then
-perform pipelined addition of pairs of elements.
-
-The recursive algorithm only works cleanly when the size of our buffer is a
-multiple of two. A naive implementation would therefore waste processing cycles
-performing pairwise additions of 
-
-This is where Bluespec Verilog shines. 
-
-It would be an excruciatingly difficult process to write this in standard
-Verilog HDL. 
-
-
-
-\subsection{Summary of Predicted Performance}
-% Unit Design: TODO: Include diagram
+unit, we can pipeline our floating point multiplications. By subsequently
+accumulating our result using a floating point adder, we observe that addition
+will take $6N$ cycles, while the pipelined multiplication step will take $11+N$
+cycles.
 
 \begin{align*}
-  T_{FMA}(N) &= (10+1)N \\
-             &= 11N \\
-  T_{PMA}(N) &= max(11+N, 6N) \\
-               &= 15 + 7N \\
-  T_{PMPA}(N) &= max(10+N, 11+2\frac{N}{2} + \frac{N}{4} + ... + 16) \\
-               &= 2N+27  
+  T &= (11 + N) + 6N \\
+  T &= 11 + 7N
+\end{align*}
+\subsection{Pipelined Multiplication \& Pairwise Addition (PMPA)}
+In an attempt to maximise the occupancy of the addition pipeline, we propose a
+more hardware-intensive strategy that makes use of pipelining for both the
+multiplication and accumulation steps.
+
+As before, in our first stage, we perform pipelined multiplication of our
+elements into a buffer. As before, this will take $11+N$ cycles
+
+We then perform reductive pairwise addition of the elements in the buffer.
+The pairwise addition procedure has the advantage that we may fully occupy the
+FP Adder pipeline. We then perform pipelined addition of pairs of elements.
+It should take $\log_2{N}$ reductive steps, where each step consumes
+$6+\frac{N_{i}}{2}$ cycles.
+
+\begin{align*}
+  T &= 6\log_2{N} + \left(N + \frac{N}{2} + \frac{N}{4} + ... + 1\right) + \text{const.}\\
+  T &= 6\log_2{N} + 2N + \text{const.}
 \end{align*}
 
-% Unit: Memory Parallelism
-% Unit: Memory Banking:
+The recursive algorithm only works cleanly when the size of our buffer is a
+power of two. A naive implementation would therefore waste processing cycles
+performing pairwise additions of the elements for the entire buffer size, rather
+than the size of our input vectors. Instead, after each step, we guarantee that
+our buffer is multiple of two, and collect together an array of remainder
+elements. The power of this algorithm can be understood through binary
+representations.
+
+\begin{align*}
+  N_i = 255_{10} = 11111111_{2}
+\end{align*}
+
+After each pass, we extract a remainer if it exists, then bitshift $N_i$. At
+most, the binary representation of the number of elements in our input vector is
+the number of binary digits of the size of our buffer $B$. Therefore, there will
+be a maximum of $\log_{2}{B}$ remainder values to place in a seperate buffer and
+accumulate. The accumulation process will therefore take $6\log_{2}{B}$ cycles.
+
+Therefore, the total cycle consumption is:
+\begin{align*}
+  T &= (N) + (6\log_2{N} + 2N) + (6\log_2{B}) + \text{const.} \\
+  T &= 3N + 6(\log_2{N} + \log_2{B})
+\end{align*}
+
+In this way, we've managed to very substantially reduce the linear constant
+factor through the use of pipelining. This is where Bluespec Verilog shines,
+scheduling complex pipelining behaviour through the extensive use of FIFOs, and
+avoiding hardware race conditions is an incredibly challenging feat. It would be
+an excruciatingly difficult process to write this in standard Verilog HDL. 
+
+\subsection{Summary of Predicted Performance}
+% Unit Design: TODO: Include diagrams
+We observe that through further pipelining optimisations we substantially reduce
+the amount of cycles required to calculate a matrix element using an individual
+functional unit.  
+
+\begin{align*}
+  T_{\text{FMA}}(N) &= 11N \\
+  T_{\text{PMA}}(N) &= 7N  \\
+  T_{\text{PMPA}}(N) &= 3N + 6(\log_2{N} + \log_2{B})
+\end{align*}
 
 \subsection{Multiple Functional Units \& Multi-ported memory}
-% TODO: Verify this
 We observe that the rate at which we issue instructions to the accelerator is
 superceded by the compute speed of the functional unit. Crucially, our firmware
 is stalls its execution and waits for the accelerator to complete its task
@@ -1597,19 +1680,18 @@ to support multiply functional units.
  `pmem_mem_0.sub a__h32127' at "MultiPortBRAM.bsv", line 18, column 37
 \end{verbatim}
 \normalsize
-We observe that the standard BSV RegFile, has a maximum of 5 read ports, and 1 write port.
+We observe that the standard BSV RegFile, has a maximum of 5 read ports, and 1
+write port. We exploit the 'generics' in BSV, and create our own
+MultiPortedMemory module. Our vector of RegFiles will allocate seperate RegFiles
+at different locations on the FPGA fabric. They may be then accessed in
+parallel.
+The BSV interface for our MultiPortBRAM module is similar to that of the RegFile
+module. However, the type has an extra parameter, $n$, representing the number of memory
+channels. The multi-ported memory has only one write port, but has $2n$ read
+ports. This is because it contains $n$ channels of RegFile BRAM and can
+distribute its reads to $n-1$ functional units and the AXI bus within a single
+clock cycle appropriately.
 
-We exploit the 'generics' in BSV, and create our own MultiPortedMemory module.
-
-Our vector of RegFiles will allocate seperate RegFiles at different locations on
-the FPGA fabric. They may be accessed in parallel. 
-
-The BSV interface for our MultiPortBRAM module is similar to the RegFile module.
-However, the type has an extra parameter, n, representing the number of memory
-channels.
-
-The multi-ported memory has only one write port, but $2N$ read ports. This is
-because it contains $N$ channels of RegFile BRAM. 
 
 \scriptsize
 \begin{verbatim}
@@ -1639,19 +1721,8 @@ endpackage
 \normalsize
 
 
-% TODO: Evaluation of results: ~10x faster
-% TODO: Explanation of results
-% 
-
-% TODO: Jesus...
 
 % What is a Regfile, What is BlockRam? What is SRAM?
-
-
-\subsubsection{Memory Striping}
-% TODO: Alternative proposition --- bank/striped memory
-% TODO: Put in further work
-% Difficult to apply appropriate backpressure, --- perhaps look into further (Conclusion)
 
 
 \chapter{Matrix Multiplication Peripheral: Evaluation}
@@ -1660,21 +1731,52 @@ endpackage
 From the Risc-V specification, we take a look at the mcycles and minstret
 registers. We observe that it is possible to read from CSRs by running the
 appropriate instructions within Risc-V assembly. We therefore make use of inline
-assembly.
-% TODO: Include read CSR safe
+assembly. The Risc-V specification highlights the \texttt{mcycles} CSR, that is
+responsible for storing the number of cycles that the processor has performed.
+This can be accessed from our firmware, and used to provide an estimate of the
+runtime of one of our algorithms. Crucially, it is an overestimate and there is
+some inherent overhead of cycles taken to read from the CSR itself, this
+cycle overhead itself can differ depending on whether the stack is pre-allocated
+or not when the instruction is ran or other factors dependent on how the
+compiler decides to optimise the C firmware when it is compiled into Risc-V
+instructions within machine code.
+
+\begin{lstlisting}[language=C,style=customc]
+#define read_csr_safe(reg) ({ register long __tmp asm("a0");  \
+      asm volatile ("csrr %0, " #reg : "=r"(__tmp));          \
+      __tmp; })
+void dummy_function() {
+  uint32_t time0, time1;
+  time0 = read_csr_safe(cycle);
+  // [...]
+  time1 = read_csr_safe(cycle);
+  printf("Run cycles: %d\n", time1-time0);
+}
+
+\end{lstlisting}
+
 
 \section{Results}
 \subsection{Functional Unit Type}
+We seek to benchmark the execution time of the individual functional unit types.
+Clearly, for a large $N$ with large matrices, our pipelined multiplication \&
+pairwise addition unit is the most cycle efficient. Yet it is vital to consider
+the cases where the constant offset plays a role. 
+
+% TODO: Evaluation for different FU types...
+
 
 \subsection{Functional Unit Parallelism}
+We make use of the fused multiply-accumulate functional unit for benchmarking
+purposes. This ensures that our individual functional units are saturated, and
+that our computation bottleneck is instead the number of functional units that
+are enabled.
 
-\subsection{Software Buffering}
-% TODO: conditions
 \begin{table}
   \centering
   \begin{tabular}{r|rr}
     \toprule
-    Units & Peripheral & Processor\\
+    Units & Peripheral & Processor \\
     \midrule
     0  &     ? & 21500 \\
     1  & 13366 & 13596 \\
@@ -1688,10 +1790,14 @@ assembly.
   \caption{Overhead: Buffer cycles: 723. Copy cycles: 4984}
 \end{table}
 
+
 \subsection{Hardware Buffering}
 
 \subsection{Synthesis}
-
+\subsubsection{Memory Striping}
+% TODO: Alternative proposition --- bank/striped memory
+% TODO: Put in further work
+% Difficult to apply appropriate backpressure, --- perhaps look into further (Conclusion)
 
 
 \chapter{Commmunication \& Memory Bottleneck}
@@ -1716,13 +1822,41 @@ assembly.
 \subsection{Firmware Command Buffering}
 % In firmware
 % Stack Instruction Buffering
+
+% TODO: conditions
+\begin{table}
+  \centering
+  \begin{tabular}{r|rr}
+    \toprule
+    Units & Peripheral & Processor\\
+    \midrule
+    0  &     ? & 21500 \\
+    1  & 13366 & 13596 \\
+    2  &  6817 &  7085 \\
+    4  &  3670 &  3954 \\
+    8  &  2621 &  2889 \\
+    12 &  2666 &  2929 \\
+    16 &  2633 &  2916 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Software Buffering: Overhead: Buffer cycles: 723. Copy cycles: 4984}
+\end{table}
+% TODO: Evaluation of results: ~10x faster
+% TODO: Explanation of results
+% 
+
+% TODO: Jesus...
+
+
+
 % In hardware
 % Accelerator buffer/program counter. (Internal stack)
 
 
+
+
+
 \subsection{Firmware Stalling/Interrupts}
-\subsection{Instruction jumping}
-% Will not work (peculiarities with instruction \$)
 
 \subsection{Hardware Command Buffering}
 % Very high savings --- best for small matrices, --- 32~ elements
@@ -1734,11 +1868,30 @@ assembly.
 % TODO: UNKNOWN TIMINGS?:
 % TODO: Cycle count / byte read in IO memory (when bypassing the cache!?)
 % TODO: CACHE R/W speed!?
+
 \subsection{Other ideas}
+% TODO: Why did we ignore interrupts. PLIC IS SLOW
 
 
 
+\subsection{Instruction jumping}
+One of the more novel ideas for getting a marginal speed-up in issuing commands
+is to reduce the processor branching overhead by incoorporating the stalling
+logic into the processor itself.
 
+% TODO: Rephrase BUBBLING
+When making use of a for loop for branching, processor cycles are wasted
+continuously loading the branch instruction, and bubbling the pipeline.
+
+We observe that this overhead can be removed by moving the program counter into
+a region of memory within our peipheral that jumps back to itself. This region
+can then be overwritten to jump back to the address after the stalled section in
+C when appropriate.
+
+For testing purposes, we attempt to execute some example code within our
+accelerator memory. This is a non-trivial process...
+% TODO: Execute this code
+% Highlight the issue
 \begin{verbatim}
 // MMIO PC
 void __attribute__((noinline, section(".dummy_section"))) func_test() {
@@ -1789,32 +1942,8 @@ Meme!
 
 
 
-\section{Accelerator}
 % TODO: Example + study (Evaluation)
-\subsection{Fused Multiply Accumulate}
 
-% Cannot exploit pipelined nature of unit.
-% Faster than individual FP multiply, then add. 10 cycles vs 14 cycles.
-
-% 10: FSM Start
-% 20: Init
-% 40: PUT: 00000000 40800000 40800000
-% 40: STATE_LOCK
-% 140: 0: MulAcc Result: 41800000
-% 140: STATE_READY
-% 150: PUT: 41800000 40800000 40800000
-% 150: STATE_LOCK
-% 250: 1: MulAcc Result: 42000000
-% 250: STATE_READY
-% 260: PUT: 42000000 40800000 40800000
-% 260: STATE_LOCK
-% 360: 2: MulAcc Result: 42400000
-% 360: STATE_READY
-% 370: PUT: 42400000 40800000 40800000
-% 370: STATE_LOCK
-% 470: 3: MulAcc Result: 42800000
-% 470: STATE_COMPLETE
-% 480: Output: 42800000
 
 
 \subsection{}
@@ -1822,6 +1951,10 @@ Meme!
 
 
 \section{Synthesis}
+% TODO: Synthesis
+\subsection{Firmware modification}
+
+
 \subsection{Vivado simulation}                                     
 
 \subsection{Implementation}
