@@ -6,11 +6,11 @@ MEMORY {
   RAM      (rwx): ORIGIN = 0x80000000, LENGTH = 0x10000000
 }
 
-_stack_size = 0x10000; /* 64KB stack = 0x10000, 1MB stack = 0x100000 */
+_stack_size = 0x10000; /* 64KB stack = 0x10000 */
 
 SECTIONS {
   .vector ORIGIN(RAM) : {
-    *crt.o(.start_jump);
+    *crt.o(.start_jump); /* ASM to run at boot */
   } > RAM
 
   .stack (NOLOAD) : {
