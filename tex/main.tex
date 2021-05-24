@@ -19,7 +19,8 @@
 \def\authorname{Khalid Aleem\xspace}
 \def\authorcollege{Trinity College\xspace}
 \def\authoremail{ka476@cam.ac.uk}
-\def\dissertationtitle{A Risc-V based co-processor to accelerate linear algebra operations.}
+\def\dissertationtitle{A Risc-V based co-processor peripheral to accelerate
+  linear algebra operations.}
 %\def\dissertationtitle{A Risc-V based co-processor to accelerate linear algebra operations.}
 % TODO: LOOK INT LACore...
 % Maximising throughput for a Risc-V linear algebra co-processor.
@@ -99,10 +100,15 @@
 % NOTE: Analysis of requirements and justified & documented use of tools!
 
 
+
 % Work on Story
 % Embedded Devices
 % Common for embedded devices to have their own acclerators
+% Reconfigurable hardware, software updates, self-driving cars.
 % RiscV - ^ - 
+
+% Seek to optimise openness & interoperability
+
 
 
 % What are our main contributions:
@@ -122,6 +128,26 @@
 % Looks inc
 % TODO: Silicon surface? Embedded systems. - Which do I pick!?
 % Mainly ^^ 
+\section{Contributions}
+This thesis is split into three main sections. In the first chapter, we fix
+latent problems within the Bluespec Inc. Piccolo processor, attach our own
+proof-of-concept memory mapped peripheral to the AXI4 bus, and design Risc-V
+bare metal firmware to interface with the peripheral. We make use of the
+modified Verilator testbench to verify the correctness of our design. This is
+vital prerequisite work to base our later work off.
+
+In our second chapter, we elaborate on our design principles and methodology for
+designing our linear algebra accelerator. We implement and benchmark the behaviour
+of differently designed functional units of increasing complexity. We also delve
+into the memory modifications required to support multiple scheduling units. We
+benchmark our different functional units, and benchmark our accelerator with a
+varying number of functional units.
+% TODO: We evaluate our design through Synthesis on an FPGA (Separate section)
+
+During our benchmarks of our accelerator, we run into the problem of the memory
+wall. In our third chapter, we address methods of improving this
+bottleneck.
+
 
 \chapter{Background}
 % TODO: Hardware design in general(?)
@@ -131,15 +157,15 @@ The set of operations a CPU may perform is known as the instruction set
 architecture (ISA). An ISA provides the means for a
 programmer to interface with a processor, allowing software to communicate with
 hardware. The ISA also specifies the method of memory addressing, whether
-addresses need to be aligned, and the structure of processor instructions.
+addresses need to be aligned, and the structure of processor instructions. Most
+desktop computers make use of the x86\_64 ISA, with embedded devices and mobile
+phones commonly using the ARM ISA.
 
-Most desktop computers make use of the x86\_64 ISA, with embedded
-devices and mobile phones commonly using the ARM ISA. 
 
 Risc-V is an open standard instruction set architecture (ISA). It is provided
-under open source licenses, where anybody may use the ISA, with no restrictions
-over the use of intellectual property (IP). In contrast the widely-used,
-especially in embedded devices, ARM ISA, is proprietary. If the ARM ISA is used
+under open source licenses, where anybody may use the ISA with no restrictions
+over the use of intellectual property (IP). In contrast ARM ISA, which is widely
+used in embedded devices, is proprietary. If the ARM ISA is used
 for commercial purposes, the company expects a licencing deal to be made and
 royalties to be paid. Licencing deals typically cost millions of dollars and can
 take months to negotiate. These IP restrictions hinder the process of academic
@@ -157,11 +183,11 @@ In contrast, the Risc-V ISA is modular, and can be partitioned into various exte
 notable interest are the 49 (\textbf{I}) 32-bit integer instructions, 11
 (\textbf{A}) atomic instructions, 36 (\textbf{C}) 16-bit compressed instructions, 8
 (\textbf{M}) instructions for integer multiplication and division, and 25
-(\textbf{F}) 32-bit precision floating point instructions. Consequently, a functional 32-bit
-processor for an embedded system with hardware floating point support requires
-only \textbf{129} instructions, with the \textbf{IMAFC} extensions. This
-increases the ease of processor design, and avoids the creation of unnecessary
-and superfluous hardware. 
+(\textbf{F}) 32-bit precision floating point instructions. Consequently, a
+functional 32-bit processor for an embedded system with hardware floating point
+support requires only \textbf{129} instructions, with the \textbf{IMAFC}
+extensions. This increases the ease of processor design, and avoids the creation
+of unnecessary and superfluous hardware. 
 
 % A - 11 (atomic instructions)
 % C - 36 (compressed 16-bit instructions)
@@ -169,31 +195,27 @@ and superfluous hardware.
 % M - 8 (integer x and /)
 % F - 25 (32-bit floating point instructions)
 
-
 % TODO: Risc-V cite: https://www2.eecs.berkeley.edu/Pubs/TechRpts/2014/EECS-2014-146.html 
 Since the publication of the Risc-V ISA, a variety of different open source
 processors have been designed. The source code of these processors is publically
-available, with a range of different designs available on GitHub. 
-
-Collaboration and open source processor
-design has a range of additional benefits in hardware security. This is of
-particular relevance in the light of severe hardware-level vulnerabilities found
-in the majority of ARM and x86\_64 processors in production, namely Spectre, and
-Meltdown. With processor designers and manufacturers paying less attention to
-verifying the security of their devices whilst competing with each other to
-maximise processor throughput, the design of processors is not subject to enough
-scrutiny within the development process. Open source processor development
-provides the opportunity for processor designs to be verified by a community of
-different organisations, reducing the likelihood that architectural level
-attacks can be performed. By basing our work on an open source processor in the
-development of our peripheral, we benefit substantially from these security
-considerations.
+available, with a range of different designs available on GitHub. Collaboration
+and open source processor design has a range of additional benefits in hardware
+security. This is of particular relevance in the light of severe hardware-level
+vulnerabilities found in the majority of ARM and x86\_64 processors in
+production, namely Spectre, and Meltdown. With processor designers and
+manufacturers paying less attention to verifying the security of their devices
+whilst competing with each other to maximise processor throughput, the design of
+processors is not subject to enough scrutiny within the development process.
+Open source processor development provides the opportunity for processor designs
+to be verified by a community of different organisations, reducing the
+likelihood that architectural level attacks can be performed. By basing our work
+on an open source processor in the development of our peripheral, we benefit
+substantially from these security considerations.
 
 Moreover, when designing a peripheral, it is vital to possess an understanding
 of the processor that it is connected to. Using an open source processor gives
 us greater freedom, allowing us to pry into the internals, and analyse the
 specifics of processor behaviour if things behave in an unexpected manner.
-
 
 \section{Simulating Hardware} 
 The fastest way to test and verify the design of hardware is through simulations.
@@ -214,7 +236,7 @@ toggled from low to high accordingly, and signals propagated through simulated
 hardware accordingly.
 
 In order to run our verilator simulation, we include our verilator-compiled C++
-headers and libraries generated that were from our hardware into our C++ test
+headers and libraries that were generated from our hardware into our C++ test
 bench. We then proceed to initialise the verilator class representing the
 top-level module of our hardware design. It is then possible to toggle the clock
 signal and propagate our simulated hardware forwards in time. This is done as
@@ -223,14 +245,14 @@ follows:
 #include <verilated.h>
 #include "VTop.h"
 uint64_t main_time = 0;
-double sc_time_stamp () {    // Called by $time in Verilog
+double sc_time_stamp() { // Called by the $time function in Verilog
     return main_time;
 }
 int main (int argc, char **argv, char **env) {
     Verilated::commandArgs(argc, argv);
     VTop* top = new VTop; // Create top-level module
     while(!Verilated::gotFinish()) {
-        if ((main_time % 10) == 5) {
+        if ((main_time % 10) == 5) { // 10 loops per cycle
             top->CLK = 1; // Raise clock at 5, 15, 25, ...
         }
         else if ((main_time % 10) == 0) {
@@ -246,9 +268,8 @@ int main (int argc, char **argv, char **env) {
 
 \end{lstlisting}
 
-
-While verilator suceeds in simulating hardware logic, it does not take into
-account physical considerations. Every hardware design has a route through
+While verilator suceeds in simulating hardware logic, it does not take physical
+considerations into account. For instance, every hardware design has a route through
 combinatorial logic known as the critical path, this is the circuitry where
 speed of propagation leads to a bound on the maximum clock rate that is
 achieveable.
@@ -259,26 +280,24 @@ achieveable.
 % TODO: image
 The most effective way to simulate hardware is by using a Field Programmable
 Gate Array (FPGA). An FPGA consists of a large lattice of programmable logic
-blocks interwoven by a grid of configurable wires and contact points. The programmable
-logic blocks range from boolean logic lookup tables (LUTs), clocks, registers, DSP units and
-block RAM. The lattice of programmable logic cells can be flashed, where the LUTs
-are programmed, and connected together by configurable wires such that the
-circuit described in hardware is physically created. A processor simulated on an
-FPGA can typically be clocked at a few hundred MHz. An FPGA can therefore offer
-over a thousand-fold performance increase compared to conventional software
-simulatons of hardware circuits.
+blocks interwoven by a grid of configurable wires and contact points. The
+programmable logic blocks range from boolean logic lookup tables (LUTs), clocks,
+registers, DSP units and block RAM. The lattice of programmable logic cells can
+be flashed, where the individual hardware units are programmed, and connected
+together by configurable wires such that the circuit described in hardware is
+physically created. A processor simulated on an FPGA can typically be clocked at
+a few hundred MHz. An FPGA can therefore offer over a thousand-fold performance
+increase compared to conventional software simulations of hardware circuits.
 
-Unlike software simulations using verilator, an
-FPGA can suffer from physical limitations of hardware layout. A processor that
-isn't pipelined sufficiently may have a shorter critical path, preventing the
-generated hardware on an FPGA from reaching a sufficiently high clock rate.
-Furthermore, additional care must be taken to prevent signal timing violations,
-and clock domain crossing within the FPGA.
+Unlike software simulations using verilator, an FPGA can suffer from physical
+limitations of hardware layout. A processor that isn't pipelined sufficiently
+may have a shorter critical path, preventing the generated hardware on an FPGA
+from reaching a sufficiently high clock rate. Furthermore, additional care must
+be taken to prevent signal timing violations, and clock domain crossing within
+the FPGA.
 
 % TODO: Clock domain crossing?
-
 % TODO: Types of FPGA(?)
-
 
 \subsubsection{Synthesis}
 % TODO: FPGA picture
@@ -556,38 +575,11 @@ improvements demonstrated by BlueVec for vector processing.
 
 % TODO: Read ZynqNet Paper
 % How to contextualise!?
-
 % NO general-purpose linalg unit
-% 
 
-% \section{Risc-V Vector Instructions}
-% TODO: Not fully finalised --- poor compiler support
-
-
-
-% Rocket RoCC - Literature Review
 % Google TPU? & Nvidia GPUs? --- Look into
 
-
-% TODO: ARM Neon / Risc-V 'V' extension
-% Why is ratification slow --- needs to be done CORRECTLY!
-% Think about future support, backwards compatability.
-% Some applications only need one part of it.
-% Neon SSE/AVX
-% Neon is defined within ARM ISA
-% Very heavyweight --- complex decoding logic, lots of instructions
-% ARM isn't truly RISC. --- SIMD extensions
-
-% speciality --- linear algebra - dot products. Lots of writing/reading. Gain
-% order of magnitude efficiency for SPECIFIC matrix multiplication.
-% NN, 
-
-% BlueVec --- decoupled accelerator that has its OWN ISA + instruction
-% interface
-% 
-
-
-% VLIW 
+% TODO VLIW?
 
 % Lots of GPU acceleration of linear algebra acceleration 
 % Big takeaway - unless super specific problem --- communication bottleneck
@@ -601,6 +593,12 @@ improvements demonstrated by BlueVec for vector processing.
 % https://link.springer.com/article/10.1007/s11390-011-0184-1
 
 \section{SIMD}
+The SIMD acronym refers to processor instructions that operate on multiple
+registers of data (Single Instruction Multiple Data). We therefore save
+processor cycles through a technique known as DLP (Data level parallelism),
+where processor instructions, and therefore fewer cycles, are required in order
+to perform the same mathematical operation.
+
 \subsection{Risc-V Vector ISA extension}
 The Risc-V ISA has the (\textbf{V}) extension to support vector instructions.
 That is, instructions that operate on a contiguous region of memory. The ISA
@@ -627,8 +625,8 @@ support producing vector instructions in machine code.
 \subsection{ARM Neon/x86 SSE,AVX}
 % TODO: elaborate - what are the key disadvantages
 % TODO: Small subsection at top of SIMD!?
-The AVX-512 instruction set extension
-consists of 16 x 4 byte, or 512-bit, registers
+The AVX-512 instruction set extension consists of 16 x 4 byte, or 512-bit,
+registers. 
 
 Perhaps the principal disadvantage of vector ISAs is that a small subset of the
 ISA is required to accelerate a particular task at hand. While it is necessary
@@ -637,29 +635,86 @@ power efficiency.
 
 
 
+% TODO: ARM Neon / Risc-V 'V' extension
+% Why is ratification slow --- needs to be done CORRECTLY!
+% Think about future support, backwards compatability.
+% Some applications only need one part of it.
+% Neon SSE/AVX
+% Neon is defined within ARM ISA
+% Very heavyweight --- complex decoding logic, lots of instructions
+% ARM isn't truly RISC. --- SIMD extensions
 
-
+% speciality --- linear algebra - dot products. Lots of writing/reading. Gain
+% order of magnitude efficiency for SPECIFIC matrix multiplication.
+% NN, 
 
 \section{Open Source Cores}
-% Since we seek to minimise the use of proprietary, and closed-source libraries.
+Since we seek to minimise the use of proprietary, and closed-source libraries,
+we avoid using proprietary soft-cores. Notably, Xilinx has its Microblaze
+processor, while Altera has its Nios II cores. We may base our accelerator on
+one of these, but we are immediately locked into either the Xilinx or Altera
+proprietary hardware development (CAD) ecosystems. It is not even possible to
+simulate an SoC of one of these processor attached to our peripheral
+Moreover, the proprietary simulation tools offer similar or worse performance
+compared to Verilator. Verilator provides us with less-overhead and greater
+freedom within our simulations, giving us direct control to our testbench with
+C++. In contrast, the proprietary xsim, and modelsim have more required overhead
+to generate a clock, initialise our memory and simulate an SoC.
 
 \subsection{Rocket}
 % TODO: talk about Rocket
-The Rocket processor is writteh in ChiselHDL
-% TODO: Rocket RoCC
-% TODO: Cite paper
+% TODO: Cite Rocket Chip Generator:https://www2.eecs.berkeley.edu/Pubs/TechRpts/2016/EECS-2016-17.pdf 
+The Rocket processor is written in ChiselHDL. It is packed with a utility known
+as the Rocket Chip Generator, which generates an SoC consisting of the Rocket
+CPU and the necessary peripherals required for a functioning system. 
 
-% TODO: Mention Freedom E310
-The Freedom E310 is a Risc-V SoC designed by the company SiFive
+% TODO: Elaborate: Freedom means physical + commercial use has been demonstrated
+% The Freedom E310 is a Risc-V SoC designed by the company SiFive, the Risc-V ASIC
+% SoC designed by SiFive is 
 
-\subsection{Piccolo}
+The Rocket processor has the Rocket Custom Co-processor (RoCC) interface. This
+allows an accelerator to be implemented through the use of custom instructions.
+By having the hardware of the processor itself fetch and execute instructions as
+opposed to a firmware and memory-mapped approach, the RoCC system saves
+processor cycles. This is accomplished by eliminating the associated overhead of
+reading/writing from memory via an AXI4 bus.
+
+% TODO: verify this claim
+One of the principal disadvantages of the RoCC is its tight coupling to the CPU.
+The RoCC constrains us to using the Rocket processor in particular, and alters
+the processor's decode and execution units. Because of instruction set
+dependency, we are constrained to Risc-V processors, and therefore making
+sacrifices in terms of interoperability. 
+
+Further arguments may be made in terms of silicon complexity. Communicating with
+an accelerator through an AXI4 bus allows the silicon of the accelerator to be
+physically separated from the CPU. This provides us with greater benefits in
+terms of heat dissipation in the circumstance that an ASIC is created.
+
+One of the key disadvantages of ChiselHDL is that it does not offer the same
+degree of scheduling abstraction that exists with BSV. While Scala gives us the
+ability to generate arbitrary and parameterised hardware, it does not provide
+the benefits of designing hardware which executes atomic rules and the
+processing/execution of complex dependency tree.
+
+\subsection{Bluespec Risc-V CPUs}
 % TODO: MIT TOOOBA project
 % TODO: Cite paper
+The Bluespec designed processors take full advantage of the modular nature of
+processor design that is made possible through the use of Bluespec Verilog.
+Seperate processor ISA extensions, the processor register width, and the AXI4
+bus size may be set appropriately on compilation of the BSV code into Verilog
+RTL.
 
-The Piccolo processor takes full advantage of the modular nature of processor
-design that is made possible through the use of Bluespec Verilog. 
-The Piccolo processor has a 3-stage in-order pipeline and may be configured as
-either 32 or 64 bits.
+Bluespec Inc. has created three example processors, the Piccolo processor
+consists of a 3-stage in-order pipeline, and is designed primarily for small
+embedded systems. The Flute processor contains a 5-stage in-order pipeline, and
+contains an MMU, allowing it to obtain a higher clock rate and boot a linux OS.
+The Toooba processor, based on the MIT Riscy-OOO, has a superscalar architecture
+and supports out-of-order execution.
+
+All of these designed processors have the advantage of an example testbench
+created in BSV. The HDL may be quickly compiled, and .
 
 %\chapter{Design and Implementation}
 % NOTE: Main contribution to (the field?)
@@ -672,22 +727,30 @@ either 32 or 64 bits.
 
 % RV32imafc - bare metal ELF
 % Spike, proxy kernel?
-
 % Cost of movement... memory wall
-
 % MMAP - ARM & RiscV
 
 \chapter{SoC and Testbench Setup: Design \& Implementation}
+% TODO: Summarise contribution
+
 \section{SoC Design}
 % TODO: SoC Image/Picture
-\subsection{Piccolo}
+\subsection{Piccolo SoC}
 Bluespec Verilog offers superior scheduling capabilities compared to ChiselHDL,
-and standard Verilog. As such, we decide to use the Piccolo processor from the
-MIT TOOOBA family within our simulation and testbench. 
+and standard Verilog. The creation of hardware that performs more complex tasks
+is therefore made significantly easier. As such, we decide to use the Piccolo
+processor from the Bluespec Inc. family within our simulation and testbench.
 
-% TODO: Talk more about why we chose Piccolo
-% 3-stage inorder pipeline (low silicon area)
-% Physical Memory - no virtual memory
+We choose the Piccolo processor over the Flute processor since we have no need
+for virtual memory, therefore an MMU is superfluous. While the Toooba processor
+would offer superior performance, due to its inherent complexity it would
+consume far too much silicon space for the purpose of synthesis. We seek to
+minimise our silicon area to open up the opportunity for the later task of
+performing synthesis on an FPGA. This will lead to a lower LUT count, and give
+us greater flexibility when designing and synthesising our own accelerator as we
+have greater FPGA resources to make use of.
+
+% TODO: Disadvantages of Piccolo(?)
 % AXI4 bus configurability
 % CPU 64/32-bit
 % ISA extension customisability
@@ -735,14 +798,21 @@ Section .text.memcpy    : addr         8001707c to addr         80017164; size 0
 \normalsize
 
 \subsubsection{UART/Serial Output}
+% TODO: UART cite
 The most important firmware debugging feature to get working is the ability to
 print to console. The Piccolo techbench SoC kindly contains a NS16550 UART
 peripheral that is connected to the AXI4 bus interconnect as a slave device.  
 
-This UART peripheral is memory mapped 
+This UART peripheral is memory mapped, and we write to its internal registers
+from within our firmware to obtain a console output. This is vital for debugging
+purposes, as it allows us to extract and verify the computed results of our
+accelerator.
 
-% TODO: UART
+Crucially, the UART peripheral provided by Bluespec Inc. is only suitable for
+simulation purposes. Data written into its transmit register are printed
+directly to console. 
 
+% TODO: Cite Linker File guide
 \subsubsection{Linker File}
 Since we are compiling our C into a bare-metal ELF, we must specify the layout
 of the machine code within the binary. This includes specifying the start
@@ -1645,28 +1715,33 @@ an excruciatingly difficult process to write this in standard Verilog HDL.
 % Unit Design: TODO: Include diagrams
 We observe that through further pipelining optimisations we substantially reduce
 the amount of cycles required to calculate a matrix element using an individual
-functional unit.  
+functional unit. Generally speaking, by using a more complicated functional unit
+design, we can obtain a lower linear coefficient with the cost of a greater
+constant term.
 
 \begin{align*}
   T_{\text{FMA}}(N) &= 11N \\
-  T_{\text{PMA}}(N) &= 7N  \\
-  T_{\text{PMPA}}(N) &= 3N + 6(\log_2{N} + \log_2{B})
+  T_{\text{PMA}}(N) &= 7N + \text{const.}  \\
+  T_{\text{PMPA}}(N) &= 3N + 6(\log_2{N} + \log_2{B}) + \text{const.}
 \end{align*}
 
 \subsection{Multiple Functional Units \& Multi-ported memory}
-We observe that the rate at which we issue instructions to the accelerator is
-superceded by the compute speed of the functional unit. Crucially, our firmware
-is stalls its execution and waits for the accelerator to complete its task
-before issuing a new instruction.
+We observe that the rate at which we issue instructions to the accelerator
+exceeds the compute speed of the functional unit. Crucially, our firmware stalls
+its execution and waits for the accelerator to complete its task before issuing
+a new instruction. Thus, we are compute-bound.
 
-We seek to exploit the paralellism offered in hardware design by duplicating our
-functional units, and issuing commands to different units sequentially. Keeping
-our processor occupied, avoiding stalling and maximising throughput.
+We seek to exploit the parallelism offered in hardware design by duplicating our
+functional units, sequentially issuing commands to different functional units
+without stalling our processor's execution. By keeping our processor occupied,
+we maximise throughput. With multiple functional units executing their
+instructions simultaneously, we should be able to obtain a compute speed
+improvement of a multiple of the number of functional units we have.
 
 A standard BRAM RegFile in BSV has 2 read ports and 1 write port. As such, in a
 single clock cycle it is only possible to read from two random access locations,
-and write to one location. Thus, we must modify the architecture of our memory
-to support multiply functional units.
+and write to one location of a RegFile. Thus, we must modify the architecture of
+our memory to support multiple functional units.
 
 \scriptsize
 \begin{verbatim}
@@ -1681,10 +1756,11 @@ to support multiply functional units.
 \end{verbatim}
 \normalsize
 We observe that the standard BSV RegFile, has a maximum of 5 read ports, and 1
-write port. We exploit the 'generics' in BSV, and create our own
-MultiPortedMemory module. Our vector of RegFiles will allocate seperate RegFiles
-at different locations on the FPGA fabric. They may be then accessed in
-parallel.
+write port. We exploit the ability to parameterise our modules in BSV, and
+create our own custom MultiPortedMemory module. Our vector of RegFiles will
+allocate seperate RegFiles at different locations on the FPGA fabric. They may
+be then accessed in parallel.
+
 The BSV interface for our MultiPortBRAM module is similar to that of the RegFile
 module. However, the type has an extra parameter, $n$, representing the number of memory
 channels. The multi-ported memory has only one write port, but has $2n$ read
@@ -1692,12 +1768,11 @@ ports. This is because it contains $n$ channels of RegFile BRAM and can
 distribute its reads to $n-1$ functional units and the AXI bus within a single
 clock cycle appropriately.
 
-
 \scriptsize
 \begin{verbatim}
 interface MultiPortBRAM#(type addr, type data, numeric type n);
    method Action upd(addr a, data x);
-   method ActionValue#(data) sub(Bit#(8) bank, addr a);
+   method ActionValue#(data) sub(Bit#(8) c, addr a);
 endinterface
 module mkMultiPortBRAM(MultiPortBRAM#(addr, data, n))
 provisos(
@@ -1711,18 +1786,27 @@ provisos(
       for(Integer i=0; i<valueOf(n); i=i+1)
          mem[i].upd(a, x); // Update ALL internal memory channels
    endmethod
-   // Read from the channel with index 'bank'.
-   method ActionValue#(data) sub(Bit#(8) bank, addr a);
-      return mem[bank].sub(a);
+   // Read from the channel with index 'c'.
+   method ActionValue#(data) sub(Bit#(8) c, addr a);
+      return mem[c].sub(a);
    endmethod
 endmodule
 endpackage
 \end{verbatim}
 \normalsize
 
+When we write to our accelerator memory through the AXI4 bus or from one of our
+functional units, we write to all memory channels. A write operation can only be
+performed at one random access memory address per cycle.
 
+Our new multi-ported memory is read at a different channel by each different
+functional unit. As such, we are capable of reading memory at the maximum rate
+possible. Our individual functional units do not use too many RegFile read ports.
 
-% What is a Regfile, What is BlockRam? What is SRAM?
+% TODO: Discuss somewhere else?
+% This leads to one of the key development problems experienced, rule conflicts.
+% By default, all rules with a true predicate execute on each cycle unless there
+% is a conflict between them.
 
 
 \chapter{Matrix Multiplication Peripheral: Evaluation}
@@ -1761,9 +1845,11 @@ void dummy_function() {
 We seek to benchmark the execution time of the individual functional unit types.
 Clearly, for a large $N$ with large matrices, our pipelined multiplication \&
 pairwise addition unit is the most cycle efficient. Yet it is vital to consider
-the cases where the constant offset plays a role. 
+the cases where the constant offset plays a role. This is particularly relevant
+for 'flatter' matrices, where the size of our input vectors entering our
+functional units are smaller.
 
-% TODO: Evaluation for different FU types...
+% TODO: Evaluation: for different FU types...
 
 
 \subsection{Functional Unit Parallelism}
@@ -1772,6 +1858,7 @@ purposes. This ensures that our individual functional units are saturated, and
 that our computation bottleneck is instead the number of functional units that
 are enabled.
 
+% TODO: Evaluation: put in unbuffered results
 \begin{table}
   \centering
   \begin{tabular}{r|rr}
@@ -1791,17 +1878,48 @@ are enabled.
 \end{table}
 
 
-\subsection{Hardware Buffering}
-
 \subsection{Synthesis}
 \subsubsection{Memory Striping}
+One of the big problems with our accelerator is the design of the multi-ported
+memory. By duplicating our memory writes across $n$ channels for $n-1$
+functional units, we occupy a very significant amount of BlockRAM on our
+accelerator.
+
+% TODO: Synthesis
+% The process of synthesis becomes a very delicate balance between...
+
+
+Given more time, we could instead stripe our memory into separate banks, with a
+low probability that more than two indexes are read from the same bank in the
+same cycle. While this is unlikely due to the nature of memory accesses for matrix
+multiplication, this can be made easier by also duplicating the striped memory
+banks as shown previously.
+
+% TODO: Analysis: Math to show memory consumption.
+
+One of the most important considerations when implementing this form of striped
+memory is how to apply the associated back-pressure when two functional units
+are reading from the same memory bank in the same channel. One of the units
+would need to be stalled. It is likely that the processing and scheduling logic
+for this would lead to wasted cycles, and therefore a reduction in compute
+speed. It would be an interesting exercise to see how this reduction in compute
+speed compares to the savings in BlockRAM.
+
+
 % TODO: Alternative proposition --- bank/striped memory
 % TODO: Put in further work
 % Difficult to apply appropriate backpressure, --- perhaps look into further (Conclusion)
 
 
 \chapter{Commmunication \& Memory Bottleneck}
+From our earlier results, we observe that at some threshold, a greater number of
+functional units does not necessarily translate into a greater accelerator
+throughput. 
+
+\section{Design \& Implementation}
 \subsection{Protocol efficiency/optimisation}
+One of the most obvious ways of improving the communication rate is to.
+
 % Analysis of struct packing
 % Attribute ((packed))
 % uint8_t offset <-- redundant (-3 bytes)
@@ -1820,7 +1938,11 @@ are enabled.
 
 
 \subsection{Firmware Command Buffering}
-% In firmware
+To address the issue of not being able to issue commands fast enough, we
+pre-generate all of our commands in the stack such that we don't waste cycles
+generating commands between issuing them.
+
+% TODO: Include firmware
 % Stack Instruction Buffering
 
 % TODO: conditions
@@ -1843,24 +1965,51 @@ are enabled.
 \end{table}
 % TODO: Evaluation of results: ~10x faster
 % TODO: Explanation of results
-% 
 
 % TODO: Jesus...
 
-
-
-% In hardware
-% Accelerator buffer/program counter. (Internal stack)
-
-
-
-
+% TODO: Accelerator buffer/program counter. (Internal stack)
 
 \subsection{Firmware Stalling/Interrupts}
+One of the potential criticisms of the technique of constantly polling a region
+of memory is that
+
+% TODO: Cite this
+On an ARM system, the hardware interrupt latency is $\approx 12$ cycles. On a
+Risc-V system, interrupt behavior is exceedingly complicated. A Risc-V processor
+has, by default, a memory-mapped peripheral known as a Platform Level Interrupt
+Controller (PLIC). The PLIC is responsible for multiplexing multiple interrupt
+requests of different priorities. While the PLIC registers interrupts and stores
+the necessary information for prioritising them, it is the role of the firmware
+to actually perform an associated task when an interrupt occurs.
+
+
+% TODO: Cite: https://sifive.cdn.prismic.io/sifive/0d163928-2128-42be-a75a-464df65e04e0_sifive-interrupt-cookbook.pdf 
+From the SiFive interrupt cookbook, we see:
+\begin{lstlisting}[language=C,style=customc]
+void machine_external_interrupt()
+{
+   //get the highest priority pending PLIC interrupt
+   uint32_t int_num = plic.claim_comlete;
+   //branch to handler
+   plic_handler[int_num]();
+   //complete interrupt by writing interrupt number back to PLIC
+   plic.claim_complete = int_num;
+}
+\end{lstlisting}
+
+Crucially, reading the highest priority interrupt from the PLIC is a memory
+read operation via the AXI4 bus and has a latency equal to that of polling our
+accelerator memory. There is then the additional overhead of marking the
+interrupt claim to be complete, and running the interrupt handler. Within our
+interrupt handler we would need to then read from our accelerator memory to
+determine which of our functional units are busy before issuing a new command.
+All of this associated overhead would significantly reduce the ability of our
+processor to rapidly issue instructions.
 
 \subsection{Hardware Command Buffering}
 % Very high savings --- best for small matrices, --- 32~ elements
-% TODO: Fix
+% TODO: Fix scheduling conflicts. 
 
 \subsection{Rule conflicts, rapid execution}
 
