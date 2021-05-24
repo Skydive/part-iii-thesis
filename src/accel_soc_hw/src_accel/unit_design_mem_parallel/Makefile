@@ -36,6 +36,9 @@ CUSTOM_DIRS := $(BASE)/src_bsv_units/ZipReduceServer_FusedMA:$(BASE)/src_bsv_uni
 BSC_PATH := $(CUSTOM_DIRS):$(CORE_DIRS):$(TESTBENCH_DIRS):+
 
 
+TOPFILE = ./src/Top_HW_Side.bsv
+
+
 
 #================================================================
 # Makefile rules for building for specific simulator: verilator

@@ -185,19 +185,20 @@ module mkSoC_Map (SoC_Map_IFC);
    // ----------------------------------------------------------------
    // Boot ROM
 
-   Fabric_Addr boot_rom_addr_base = 'h_0000_1000;
-   Fabric_Addr boot_rom_addr_size = 'h_0000_1000;    // 4K
+   Fabric_Addr boot_rom_addr_base = 'h_8080_0000;
+   //Fabric_Addr boot_rom_addr_base = 'h_0000_1000;
+   Fabric_Addr boot_rom_addr_size = 'h_0080_0000;    // 4K not 256 MB
    Fabric_Addr boot_rom_addr_lim  = boot_rom_addr_base + boot_rom_addr_size;
 
    function Bool fn_is_boot_rom_addr (Fabric_Addr addr);
       return ((boot_rom_addr_base <= addr) && (addr < boot_rom_addr_lim));
    endfunction
-
+   
    // ----------------------------------------------------------------
    // Main Mem Controller 0
 
    Fabric_Addr mem0_controller_addr_base = 'h_8000_0000;
-   Fabric_Addr mem0_controller_addr_size = 'h_1000_0000;    // 256 MB
+   Fabric_Addr mem0_controller_addr_size = 'h_0080_0000;    // 256 MB
    Fabric_Addr mem0_controller_addr_lim  = mem0_controller_addr_base + mem0_controller_addr_size;
 
    function Bool fn_is_mem0_controller_addr (Fabric_Addr addr);
@@ -258,9 +259,9 @@ module mkSoC_Map (SoC_Map_IFC);
    // ----------------------------------------------------------------
    // PC, MTVEC and NMIVEC reset values
 
-   Bit #(64) pc_reset_value     = boot_rom_addr_base;
+   Bit #(64) pc_reset_value     = 'h8000_0000; //'h8000_0000;//boot_rom_addr_base;
    //Bit #(64) pc_reset_value     = 'h80000000;
-   Bit #(64) mtvec_reset_value  = 'h1000;    // TODO
+   Bit #(64) mtvec_reset_value  = 'h8000_0000;    // TODO
 
    // Non-maskable interrupt vector
    Bit #(64) nmivec_reset_value = ?;         // TODO
@@ -351,8 +352,8 @@ typedef 5 Num_Slaves;
 `endif
 
 
-Integer boot_rom_slave_num        = 0;
-Integer mem0_controller_slave_num = 1;
+Integer boot_rom_slave_num        = 1;
+Integer mem0_controller_slave_num = 0;
 Integer uart0_slave_num           = 2;
 Integer test_slave_num           = 3;
 Integer accel_slave_num           = 4;

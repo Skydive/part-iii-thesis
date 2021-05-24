@@ -15,6 +15,8 @@ crtInit:
   la gp, __global_pointer$
   .option pop
   la sp, _stack_start
+
+  call initialize_ram // Copy .data region
   call main
 infinitLoop:
   j infinitLoop

@@ -1,38 +1,42 @@
-OUTPUT_FORMAT("elf32-littleriscv")
+OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv", "elf32-littleriscv")
+
 OUTPUT_ARCH(riscv)
 ENTRY(crtStart) /* Symbol for entry point */
 
 MEMORY {
-  RAM      (rwx): ORIGIN = 0x80000000, LENGTH = 0x10000000
+  ROM      (rx):  ORIGIN = 0x80000000, LENGTH = 0x10000  /* 64KB */ 
+  RAM      (rwx): ORIGIN = 0x80800000, LENGTH = 0x10000 /* 64KB */
 }
 
-_stack_size = 0x10000; /* 64KB stack = 0x10000 */
+_stack_size = 0x4000; /* 64KB stack = 0x10000, 1MB stack = 0x100000 */
 
 SECTIONS {
-  .vector ORIGIN(RAM) : {
-    *crt.o(.start_jump); /* ASM to run at boot */
-  } > RAM
+  .vector ORIGIN(ROM) : {
+    *crt.o(.start_jump);
+  } > ROM AT > ROM
 
-  .stack (NOLOAD) : {
-    . = ALIGN(16);
-    PROVIDE (_stack_end = .);
-    . = . + _stack_size;
-    . = ALIGN(16);
-    PROVIDE (_stack_start = .);
-  } > RAM
-
-  .data : {
+  .text : {
+    *(.text);
+    *(.rodata .rodata.*) /* Constants */
+    *(.srodata .srodata.*) /* read-only initialised data */
+    *(.text.*); /* seperate sections for static linked NewLib functions */
+    *(.eh_frame)
+    _rom_data_start = .;
+  } > ROM
+  
+  .data : { /* initialised data */
+    . = ALIGN(8) ;
+    _ram_data_start = .;
     *(.rdata) /* global static data */
-    *(.rodata .rodata.*)
     *(.data .data.*) /* initialised data */
-    . = ALIGN(8);
     PROVIDE( __global_pointer$ = . + 0x800 );
     *(.sdata .sdata.*) /* small initialised data */
     . = ALIGN(8);
-    *(.srodata .srodata.*) /* read-only initialised data */
-  } > RAM
+    _ram_data_end = .;
+  } > RAM AT > ROM
+  _ram_data_size = _ram_data_end - _ram_data_start;
 
-  .bss (NOLOAD) : {
+  .bss (NOLOAD) : { /* uninitialised data */
 		. = ALIGN(4);
 		_bss_start = .;
     *(.sbss*) /* small uninitialised data */
@@ -42,8 +46,11 @@ SECTIONS {
 		_bss_end = .;
   } > RAM
 
-  .text : {
-    *(.text);
-    /* *(.text.*); */ /* seperate sections for static linked NewLib functions */
+  .stack (NOLOAD) : {
+    . = ALIGN(16);
+    _stack_end = .;
+    . = . + _stack_size;
+    . = ALIGN(16);
+    _stack_start = .;
   } > RAM
 }

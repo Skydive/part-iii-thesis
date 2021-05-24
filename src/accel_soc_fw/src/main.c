@@ -242,17 +242,49 @@ void accel_hw_test() {
   printf("Time taken: %d\n", time1-time0);
   for(int i=0; i<16; i++)
     printf("0x%X -> %2.f\n", &ptr_c_addr[i], ptr_c_addr[i]);
-  
 }
 
+static uint32_t global_test = 0xC0FFEE;
+// Stored as: EE FF C0 44 FE CA
+extern uint8_t* _rom_data_start;
+extern uint8_t* _ram_data_start, _ram_data_end, _ram_data_size;
 void main() {
   print("Hello, world!\n");
   mstatus_init();
   init_stack();
 
   main_test();
-  accel_unbuffered_test();
+  printf("ROM obviously works!\n");
+
+
+  // Need to copy bss and data regions into RAM...
+  printf("RAM: Global Test: %X -> %X\n", &global_test, global_test);
+  size_t gt_ofst = (void*)&global_test - (void*)&_ram_data_start;
+  uint32_t* gt_rom = &_rom_data_start+gt_ofst;
+  printf("ROM: Global Test: %X -> %X\n", gt_rom, *gt_rom);
+
+  //accel_unbuffered_test();
 
 }
-void irqCallback() {
+
+
+extern uint8_t *_bss_start, *_bss_end;
+void initialize_ram() {
+  // Clear BSS
+  for (uint32_t *bss_ptr = &_bss_start; bss_ptr < &_bss_end;) {
+    *bss_ptr++ = 0;
+  }
+
+  /* if (init_values_ptr != data_ptr) { */
+  /*   for (; data_ptr < &_edata;) { */
+  /*     *data_ptr++ = *init_values_ptr++; */
+  /*   } */
+  /* } */
+
+  //uintptr_t rom_data_end = (uintptr_t)&_rom_data_start+(size_t)&_ram_data_size;
+  printf("RAM Data: %X -> %X (%X)\n", &_ram_data_start, &_ram_data_end, &_ram_data_size);
+  printf("ROM Data: %X -> %X\n", &_rom_data_start, (uintptr_t)&_rom_data_start+(size_t)&_ram_data_size);
+  print("Copying data region from ROM to RAM...\n");
+  memcpy((void*)(&_ram_data_start), (void*)&_rom_data_start, (size_t)&_ram_data_size);
+  print("Success\n");
 }

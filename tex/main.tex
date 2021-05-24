@@ -410,7 +410,7 @@ design more efficient and structured.
 
 
 % TODO: Cite https://people.eecs.berkeley.edu/~krste/papers/chisel-dac2012.pdf 
-\subsection{ChiselHDL}
+\subsection{ChiselHDL \& Bluespec Verilog}
 Chisel (Constructing Hardware In a Scala Embedded Language), is a new
 programming language for hardware design that is based on Scala, that is
 executed on a JVM.
@@ -441,7 +441,6 @@ Code may be written in Scala to generate hardware.
 
 % TODO: Chisel Bundle, Component (explain)
 
-\subsection{Bluespec Verilog}
 % Features
 % Atomic rules, structs,
 % Correct concurrency - strict avoidance of race conditions
@@ -467,8 +466,8 @@ Code may be written in Scala to generate hardware.
 \section{BlueVec}
 % https://www.cl.cam.ac.uk/~swm11/papers/FPL2013-BlueVec.pdf
 The BlueVec co-processor is a vector processor aimed at accelerating neural
-network inference designed to address the computation botleneck of the
-\emph{memory wall}.
+network inference designed to address the computation botleneck of the problem
+of the \emph{memory wall}.
 The memory wall refers to the growing discrepancy between memory bandwidth and
 compute power. It is increasingly common for an accelerator system to become
 memory-bound, where the latency/clock cycle cost of moving data to and from
@@ -480,8 +479,9 @@ The BlueVec co-processor relies on the observation that in many situations where
 a custom accelerator pipeline is implemented to accelerate some computation
 through performing it in hardware, a significant improvement may still be obtained
 by vectorizing the computation, and implementing the computation within
-software. The paper demonstrates the example of neural network inference, where
-the BlueVec co-processor is used in the context of a digit recognition problem.
+software making use of SIMD instructions. The paper demonstrates the example of
+neural network inference, where the BlueVec co-processor is used in the context
+of a digit recognition problem.
 
 The BlueVec co-processor is interacted with through the use of a custom
 instruction set extensin for the Nios II. The Altera Nios II is a soft-core processor
@@ -1251,6 +1251,12 @@ receives an interrupt signal, or when the simulation ends.
 On interrupting our program we measure a clock rate of $22406$~Hz. This is impressive for a simulation.
 % TODO: Evaluate properly
 
+\section{Synthesis}
+% TODO: Include Vivado Studio
+% TODO: SoC Map
+% TODO: MML file --- flash BlockRAM
+% TODO: P&R Diagram - highlighted!
+
 \section{Simulating an AXI4 Peripheral}
 \subsection{Methodology}
 We make use of a verilator testbench to simulate our SoC. We write some simple
@@ -1307,6 +1313,8 @@ Stall complete!
 
 Now that we have demonstrated a functioning testbench, and 
 % TODO: Compare to proprietary SoC?!
+
+
 
 \chapter{Matrix Multiplication Peripheral: Design \& Implementation}
 \section{Overview}

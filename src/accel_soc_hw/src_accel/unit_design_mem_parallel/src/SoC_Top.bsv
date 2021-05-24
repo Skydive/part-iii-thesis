@@ -50,7 +50,7 @@ import Core_IFC :: *;
 import Core     :: *;
 import PLIC     :: *;    // For interface to PLIC interrupt sources, in Core_IFC
 
-import Boot_ROM       :: *;
+//import Boot_ROM       :: *;
 import Mem_Controller :: *;
 import UART_Model     :: *;
 import Test_Model     :: *;
@@ -93,6 +93,7 @@ interface SoC_Top_IFC;
 
    // External real memory
    interface MemoryClient #(Bits_per_Raw_Mem_Addr, Bits_per_Raw_Mem_Word)  to_raw_mem;
+   interface MemoryClient #(Bits_per_Raw_Mem_Addr, Bits_per_Raw_Mem_Word)  to_raw_mem1;
 
    // UART0 to external console
    interface Get #(Bit #(8)) get_to_console;
@@ -138,7 +139,9 @@ module mkSoC_Top (SoC_Top_IFC);
    Fabric_AXI4_IFC  fabric <- mkFabric_AXI4;
 
    // SoC Boot ROM
-   Boot_ROM_IFC  boot_rom <- mkBoot_ROM;
+   //Boot_ROM_IFC  boot_rom <- mkBoot_ROM;
+   Mem_Controller_IFC  boot_rom <- mkMem_Controller;
+   
    // AXI4 Deburster in front of Boot_ROM
    AXI4_Deburster_IFC #(Wd_Id,
 			Wd_Addr,
@@ -435,6 +438,7 @@ module mkSoC_Top (SoC_Top_IFC);
 
    // External real memory
    interface to_raw_mem = mem0_controller.to_raw_mem;
+   interface to_raw_mem1 = boot_rom.to_raw_mem;
 
    // UART to external console
    interface get_to_console   = uart0.get_to_console;
