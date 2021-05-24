@@ -1,42 +1,19 @@
-/*
-This is free and unencumbered software released into the public domain.
-
-Anyone is free to copy, modify, publish, use, compile, sell, or
-distribute this software, either in source code form or as a compiled
-binary, for any purpose, commercial or non-commercial, and by any
-means.
-*/
-OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv", "elf32-littleriscv")
+OUTPUT_FORMAT("elf32-littleriscv")
 OUTPUT_ARCH(riscv)
-ENTRY(crtStart)
+ENTRY(crtStart) /* Symbol for entry point */
 
 MEMORY {
   RAM      (rwx): ORIGIN = 0x80000000, LENGTH = 0x10000000
 }
 
-_stack_size = DEFINED(_stack_size) ? _stack_size : 256;
-_heap_size = DEFINED(_heap_size) ? _heap_size : 0;
+_stack_size = 0x10000; /* 64KB stack = 0x10000 */
 
 SECTIONS {
-
-  ._vector ORIGIN(RAM): {
-    *crt.o(.start_jump);
-    *crt.o(.text);
+  .vector ORIGIN(RAM) : {
+    *crt.o(.start_jump); /* ASM to run at boot */
   } > RAM
 
-  ._user_heap (NOLOAD):
-  {
-    . = ALIGN(8);
-    PROVIDE ( end = . );
-    PROVIDE ( _end = . );
-    PROVIDE ( _heap_start = .);
-    . = . + _heap_size;
-    . = ALIGN(8);
-    PROVIDE ( _heap_end = .);
-  } > RAM
-
-._stack (NOLOAD):
-  {
+  .stack (NOLOAD) : {
     . = ALIGN(16);
     PROVIDE (_stack_end = .);
     . = . + _stack_size;
@@ -44,67 +21,29 @@ SECTIONS {
     PROVIDE (_stack_start = .);
   } > RAM
 
-  .data :
-  {
-    *(.rdata)
+  .data : {
+    *(.rdata) /* global static data */
     *(.rodata .rodata.*)
-    *(.gnu.linkonce.r.*)
-    *(.data .data.*)
-    *(.gnu.linkonce.d.*)
+    *(.data .data.*) /* initialised data */
     . = ALIGN(8);
     PROVIDE( __global_pointer$ = . + 0x800 );
-    *(.sdata .sdata.*)
-    *(.gnu.linkonce.s.*)
+    *(.sdata .sdata.*) /* small initialised data */
     . = ALIGN(8);
-    *(.srodata.cst16)
-    *(.srodata.cst8)
-    *(.srodata.cst4)
-    *(.srodata.cst2)
-    *(.srodata .srodata.*)
+    *(.srodata .srodata.*) /* read-only initialised data */
   } > RAM
 
   .bss (NOLOAD) : {
 		. = ALIGN(4);
-		/* This is used by the startup in order to initialize the .bss secion */
 		_bss_start = .;
-    *(.sbss*)
-    *(.gnu.linkonce.sb.*)
-    *(.bss .bss.*)
-    *(.gnu.linkonce.b.*)
-    *(COMMON)
+    *(.sbss*) /* small uninitialised data */
+    *(.bss .bss.*) /* uninitialised data */
+    *(COMMON) /* common symbols */
 		. = ALIGN(4);
 		_bss_end = .;
   } > RAM
 
-
-  .rodata         :
-  {
-    *(.rdata)
-    *(.rodata .rodata.*)
-    *(.gnu.linkonce.r.*)
-  } > RAM
-
-  .noinit (NOLOAD) : {
-      . = ALIGN(4);
-      *(.noinit .noinit.*)
-      . = ALIGN(4);
-  } > RAM
-
-  .memory : {
+  .text : {
     *(.text);
-    end = .;
+    /* *(.text.*); */ /* seperate sections for static linked NewLib functions */
   } > RAM
-
-  .ctors          :
-  {
-    . = ALIGN(4);
-    _ctors_start = .;
-    KEEP(*(.init_array*))
-    KEEP (*(SORT(.ctors.*)))
-    KEEP (*(.ctors))
-    . = ALIGN(4);
-    _ctors_end = .;
-    PROVIDE ( END_OF_SW_IMAGE = . );
-  } > RAM
-
 }

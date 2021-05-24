@@ -90,13 +90,13 @@ void ftoa(float n, char* res, int afterpoint)
 
 void _putchar(char c)
 {
-	struct device dev;
+	struct device_t dev;
 	dev.addr = NS16550_ADDR;
   vOutNS16550(&dev, c);
 }
 
 void print(const char* str){
-	struct device dev;
+	struct device_t dev;
 	dev.addr = NS16550_ADDR;
 	while(*str){
 		vOutNS16550(&dev, *str);
@@ -106,7 +106,7 @@ void print(const char* str){
 
 
 void println(const char* str){
-	struct device dev;
+	struct device_t dev;
 	dev.addr = NS16550_ADDR;
 	print(str);
 	vOutNS16550( &dev, '\n' );
@@ -118,7 +118,7 @@ void delay(uint32_t loops){
 	}
 }
 void print_slow(const char* str){
-	struct device dev;
+	struct device_t dev;
 	dev.addr = NS16550_ADDR;
 	while(*str){
 		vOutNS16550(&dev, *str);
