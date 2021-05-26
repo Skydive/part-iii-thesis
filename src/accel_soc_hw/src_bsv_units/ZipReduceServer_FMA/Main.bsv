@@ -35,16 +35,20 @@ typedef enum {
    STATUS_OK
 } MatUnitStatus deriving (Eq, Bits); 
 
+`ifndef ALLOC_SIZE
+`define ALLOC_SIZE 256
+`endif
+
 (* synthesize *)
 module mkMain(Empty);
-   Integer alloc_size = 48;
+   Integer alloc_size = `ALLOC_SIZE;
    //RegFile #(Bit #(32), FSingle) mem <- mkRegFile(0, fromInteger(alloc_size)-1);
    RegFile #(Bit #(32), FSingle) mem <- mkRegFileLoad ("array1.hex", 0, fromInteger(alloc_size) - 1);
 
    Server#(MRequestUT, FSingle) marr <- mkZipReduceServer;
 
-   let ptr_a = MatUnitPtr{addr: 0, offset: 0, stride: 1, count: 24};
-   let ptr_b = MatUnitPtr{addr: 24, offset: 0, stride: 1, count: 24};
+   let ptr_a = MatUnitPtr{addr: 0, offset: 0, stride: 1, count: fromInteger(alloc_size/2)};
+   let ptr_b = MatUnitPtr{addr: fromInteger(alloc_size/2), offset: 0, stride: 1, count: fromInteger(alloc_size/2)};
    
    Reg#(UInt#(8)) i <- mkReg(0);
 
@@ -55,6 +59,7 @@ module mkMain(Empty);
    FSM load_data <- mkFSM(seq
       action
          marr.request.put(Init(extend(ptr_a.count)));
+	 $display("%3d: Init Command Issued: %d", $time, ptr_a.count);
       endaction
       for(i<=0; i < ptr_a.count; i<=i+1) seq
          action

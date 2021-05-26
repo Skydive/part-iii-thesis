@@ -9,6 +9,7 @@ BSC_PATH ?=
 TOPFILE = ./Main.bsv
 TOPMODULE = mkMain
 
+ALLOC_SIZE ?= 256
 
 build_dir:
 	mkdir -p $@
@@ -16,10 +17,11 @@ build_dir:
 .PHONY: compile
 compile: build_dir
 	@echo "INFO: Re-compiling Core (CPU, Caches)"
-	bsc -u -elab -sim  $(TMP_DIRS)  $(BSC_COMPILATION_FLAGS)  $(TOPFILE)
+	bsc -u -elab -sim -D ALLOC_SIZE=$(ALLOC_SIZE) $(TMP_DIRS)  $(BSC_COMPILATION_FLAGS)  $(TOPFILE)
 	@echo "INFO: Re-compiled  Core (CPU, Caches)"
 
 SIM_EXE_FILE = exe_HW_sim
+
 
 .PHONY: simulator
 simulator:

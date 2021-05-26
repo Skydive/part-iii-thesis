@@ -61,7 +61,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
       end
       buffer.upd(m_count, res);
       m_count <= m_count + 1;
-      $display("%3d:%2d: Mul Result: %h", $time, m_count, pack(res));
+      //$display("%3d:%2d: Mul Result: %h", $time, m_count, pack(res));
    endrule
    
    // Rule, pairwise add & reduce
@@ -71,7 +71,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
 
    rule rl_pairwise_add_req(state == STATE_ADD && a_free && a_count + 2 <= m_count && m_count != 1);
       if(m_count % 2 == 1) begin
-         $display("%3d:  :%2d REMAINDER", $time, m_count);
+         //$display("%3d:  :%2d REMAINDER", $time, m_count);
          m_count <= m_count - 1;
          let rem = buffer.sub(m_count-1);
          rem_buf.upd(rem_count, rem);
@@ -80,7 +80,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
       begin
          let opd1 = buffer.sub(a_count);
          let opd2 = buffer.sub(a_count+1);
-         $display("%3d:%2d:%2d ADD: %h %h", $time, a_count, m_count, opd1, opd2);
+         //$display("%3d:%2d:%2d ADD: %h %h", $time, a_count, m_count, opd1, opd2);
          fpu_add.request.put(tuple3(opd1, opd2, defaultValue));
          a_count <= a_count + 2;
          if(a_count == m_count-2) begin
@@ -89,7 +89,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
       end
    endrule
    rule rl_pairwise_end(state == STATE_ADD && a_free && m_count == 1);
-      $display("%3d: STATE_REM", $time);
+      //$display("%3d: STATE_REM", $time);
       //acc <= buffer.sub(0);
       rem_buf.upd(rem_count, buffer.sub(0));
       rem_count <= rem_count + 1;
@@ -100,7 +100,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
 
    rule rl_pairwise_add_resp(state == STATE_ADD); // No simultaneous buffer access...
       match { .res, .exc } <- fpu_add.response.get();
-      $display("%3d:%2d:%2d Add Result: %h", $time, ar_count, m_count, pack(res));
+      //$display("%3d:%2d:%2d Add Result: %h", $time, ar_count, m_count, pack(res));
       let place_idx = ar_count/2;
       buffer.upd(place_idx, res);
       if(ar_count == m_count-2) begin
@@ -126,7 +126,7 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
       acc <= res;
       if(rem_count == 0) begin
          state <= STATE_COMPLETE;
-         $display("%3d: STATE_COMPLETE", $time);
+         //$display("%3d: STATE_COMPLETE", $time);
       end else
       begin
          rem_free <= True;
@@ -138,16 +138,16 @@ module mkZipReduceServer(Server#(MRequestUT, FSingle));
       method Action put(MRequestUT m) if (state == STATE_READY);
          if(m matches tagged ReqOp .r) begin
             match { .opd1, .opd2 } = r;
-            $display("%3d: PUT: %h %h", $time, opd1, opd2);
+            //$display("%3d: PUT: %h %h", $time, opd1, opd2);
             fpu_mult.request.put (tuple3(opd1, opd2, defaultValue));
             if(r_count == alloc_size-1) begin
                state <= STATE_MULT;
-               $display("%3d: STATE_MULT", $time);
+               //$display("%3d: STATE_MULT", $time);
             end
             r_count <= r_count + 1;
          end 
          else if(m matches tagged Init .a) begin
-            $display("%3d: Init", $time);
+            //$display("%3d: Init", $time);
             alloc_size <= a;
             m_count <= 0;
             r_count <= 0;

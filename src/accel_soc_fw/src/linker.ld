@@ -1,15 +1,12 @@
 OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv", "elf32-littleriscv")
-
 OUTPUT_ARCH(riscv)
-ENTRY(crtStart) /* Symbol for entry point */
-
+ENTRY(crtStart)
 MEMORY {
-  ROM      (rx):  ORIGIN = 0x80000000, LENGTH = 0x10000  /* 64KB */ 
+  ROM      (rx):  ORIGIN = 0x80000000, LENGTH = 0x10000  /* 64KB */
   RAM      (rwx): ORIGIN = 0x80800000, LENGTH = 0x10000 /* 64KB */
 }
 
 _stack_size = 0x4000; /* 64KB stack = 0x10000, 1MB stack = 0x100000 */
-
 SECTIONS {
   .vector ORIGIN(ROM) : {
     *crt.o(.start_jump);
@@ -24,7 +21,7 @@ SECTIONS {
     _rom_data_start = .;
   } > ROM
   
-  .data : { /* initialised data */
+  .data : { /* initialised static variables */
     . = ALIGN(8) ;
     _ram_data_start = .;
     *(.rdata) /* global static data */
@@ -36,7 +33,7 @@ SECTIONS {
   } > RAM AT > ROM
   _ram_data_size = _ram_data_end - _ram_data_start;
 
-  .bss (NOLOAD) : { /* uninitialised data */
+  .bss (NOLOAD) : { /* uninitialised static variables */
 		. = ALIGN(4);
 		_bss_start = .;
     *(.sbss*) /* small uninitialised data */
@@ -46,7 +43,7 @@ SECTIONS {
 		_bss_end = .;
   } > RAM
 
-  .stack (NOLOAD) : {
+  .stack (NOLOAD) : { /* stack location */
     . = ALIGN(16);
     _stack_end = .;
     . = . + _stack_size;

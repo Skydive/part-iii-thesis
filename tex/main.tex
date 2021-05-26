@@ -31,6 +31,10 @@
 % \usepackage[dvips]{epsfig,graphics} 
 \usepackage{epsfig,graphicx,verbatim,parskip,tabularx,setspace,xspace}
 
+\usepackage[english]{babel}
+\usepackage{biblatex}
+\addbibresource{bibliography.bib}
+
 \usepackage{booktabs}
 \usepackage{amsmath,amssymb}
 \usepackage{fancyvrb,listings}
@@ -100,6 +104,18 @@
 % NOTE: Analysis of requirements and justified & documented use of tools!
 
 
+% Include image:
+% TODO: AMD acquisition of Xilinx --- Intel acquisition of Altera
+%% Modern processor structure
+%% Seems increasingly likely that an FPGA fabric may be placed within
+%% microprocessors
+%% Incremental 'hardware' updates to custom processing pipelines --- fix
+%% hardware vulnerabilities
+
+% Coupled with:
+% Growth of open-source FPGA tools \& alternative synthesis languages
+% Easier to implement custom processing pipelines that are optimised for very
+% specific operations
 
 % Work on Story
 % Embedded Devices
@@ -109,6 +125,14 @@
 
 % Seek to optimise openness & interoperability
 
+% Embedded device, variable footprint (Bluespec parameterised)
+% Linear algebra accelerator --- machine learning, and
+% Tightly coupled accelerator and CPU.
+
+% Maximise throughput without sacrificing interopability
+% --- Open source principles
+
+% Shy away from SIMD extensions. No ARM license, 
 
 
 % What are our main contributions:
@@ -128,6 +152,9 @@
 % Looks inc
 % TODO: Silicon surface? Embedded systems. - Which do I pick!?
 % Mainly ^^ 
+
+% TODO: Link to requirements
+
 \section{Contributions}
 This thesis is split into three main sections. In the first chapter, we fix
 latent problems within the Bluespec Inc. Piccolo processor, attach our own
@@ -139,14 +166,17 @@ vital prerequisite work to base our later work off.
 In our second chapter, we elaborate on our design principles and methodology for
 designing our linear algebra accelerator. We implement and benchmark the behaviour
 of differently designed functional units of increasing complexity. We also delve
-into the memory modifications required to support multiple scheduling units. We
-benchmark our different functional units, and benchmark our accelerator with a
-varying number of functional units.
+into the memory modifications required to support multiple functional units and
+exploit the further parallelism offered by hardware. We benchmark our different
+types of functional units, and benchmark the performance of our accelerator
+while varying the number of functional units.
 % TODO: We evaluate our design through Synthesis on an FPGA (Separate section)
 
 During our benchmarks of our accelerator, we run into the problem of the memory
-wall. In our third chapter, we address methods of improving this
-bottleneck.
+wall. More specifically, 
+
+% TODO: Chapter 3 description
+In our third chapter, we address a range of methods for removing this bottleneck.
 
 
 \chapter{Background}
@@ -195,8 +225,7 @@ of unnecessary and superfluous hardware.
 % M - 8 (integer x and /)
 % F - 25 (32-bit floating point instructions)
 
-% TODO: Risc-V cite: https://www2.eecs.berkeley.edu/Pubs/TechRpts/2014/EECS-2014-146.html 
-Since the publication of the Risc-V ISA, a variety of different open source
+Since the publication of the Risc-V ISA\cite{Waterman:EECS-2014-54}, a variety of different open source
 processors have been designed. The source code of these processors is publically
 available, with a range of different designs available on GitHub. Collaboration
 and open source processor design has a range of additional benefits in hardware
@@ -276,7 +305,7 @@ achieveable.
 
 % https://www.veripool.org/papers/Verilator_Fast_Free_Me_DVClub10_pres.pdf
 
-\subsection{FPGAs}
+\subsection{FPGAs \& Synthesis}
 % TODO: image
 The most effective way to simulate hardware is by using a Field Programmable
 Gate Array (FPGA). An FPGA consists of a large lattice of programmable logic
@@ -332,7 +361,6 @@ program commercial FPGAs. The proprietary bitstream format for the Xilinx
 Arty-A7 has been fully reverse engineered.
 The Symbiflow project is capable of performing synthesis, placement, routing
 and bitstream generation for this device, where no proprietary licence is required. 
-
 
 \section{Hardware Design Languages}
 Designing hardware in traditional Verilog is a highly inefficient process. There
@@ -408,14 +436,14 @@ This can be seen as follows:
 The traditional HDLs were built to be hardware simulation languages and were not
 intended for the purpose of designing very complex hardware, such as processors.
 Modern software development programming languages have abstractions, such as
-structures and functions, improving productivity, encouraging the reuse of
-code, and eliminating unnecessary 'cruft'.
+structures and functions, improving productivity and encouraging the reuse of
+constructs.
 
 To figure out how a module behaves, one must constantly move around the file,
-observing how the state changes when registers flip in an \texttt{always\_ff}
-block, usually used to control a finite state machine. Simultaneously one must
-also keep track of how the combinatorial state of the hardware changes, by
-looking at an \texttt{always\_comb} block.
+observing how the state changes when the clock changes, or if registers flip
+within an \texttt{always\_ff} block, in many cases used to control a finite state
+machine. Simultaneously one must also keep track of how the combinatorial state
+of the hardware changes, by looking at an \texttt{always\_comb} block.
 
 Due to the difficulties concerning development time, and for purposes of
 efficiency, more expressive hardware design languages have been created, namely,
@@ -429,7 +457,7 @@ design more efficient and structured.
 
 
 % TODO: Cite https://people.eecs.berkeley.edu/~krste/papers/chisel-dac2012.pdf 
-\subsection{ChiselHDL \& Bluespec Verilog}
+\subsection{ChiselHDL}
 Chisel (Constructing Hardware In a Scala Embedded Language), is a new
 programming language for hardware design that is based on Scala, that is
 executed on a JVM.
@@ -591,6 +619,10 @@ improvements demonstrated by BlueVec for vector processing.
 
 % TODO: Look at Linpack library
 % https://link.springer.com/article/10.1007/s11390-011-0184-1
+
+
+% GPUs are slow for small matrices --- CUDA cores not fully occupied 
+% https://ietresearch.onlinelibrary.wiley.com/doi/epdf/10.1049/joe.2018.9178
 
 \section{SIMD}
 The SIMD acronym refers to processor instructions that operate on multiple
@@ -815,10 +847,17 @@ directly to console.
 % TODO: Cite Linker File guide
 \subsubsection{Linker File}
 Since we are compiling our C into a bare-metal ELF, we must specify the layout
-of the machine code within the binary. This includes specifying the start
-address of RAM, the region of memory where the stack is located, and where
-static/initialised variables and sections of machine code are located within our
-binary. This is so it is loaded into memory in an appropriate manner.
+of the machine code within the binary using a linker file.
+It is vital to consider the distinction between load memory address (LMA) and
+virtual memory address (VMA). The LMA is the location of our section in our
+binary, while the VMA is the location
+referenced within our machine code. In the situation where we perform synthesis,
+we may only initialise our ROM. When our machine code and static variables are
+compiled into a binary, our initialised static variables \texttt{(.data)} must
+be copied over from our ROM into RAM. The LMA of our \texttt{.data} section must
+be within our ROM, and the VMA must be within our RAM. Furthermore, we must also
+zero our uninitialised static variables \texttt{(.bss)}, with the VMA in our
+RAM. We must also specify the start VMA address of our stack.
 
 The main sections of the linker file are as follows: The \texttt{.vector}
 section contains the instructions that are run after the processor is booted.
@@ -835,41 +874,42 @@ code section in the situation that a stack overflow occurs.
 
 \scriptsize
 \begin{verbatim}
-OUTPUT_FORMAT("elf32-littleriscv")
+OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv", "elf32-littleriscv")
 OUTPUT_ARCH(riscv)
-ENTRY(crtStart) /* Symbol for entry point */
-
+ENTRY(crtStart)
 MEMORY {
-  RAM      (rwx): ORIGIN = 0x80000000, LENGTH = 0x10000000
+  ROM      (rx):  ORIGIN = 0x80000000, LENGTH = 0x10000  /* 64KB */
+  RAM      (rwx): ORIGIN = 0x80800000, LENGTH = 0x10000 /* 64KB */
 }
 
-_stack_size = 0x10000; /* 64KB stack = 0x10000 */
-
+_stack_size = 0x4000; /* 64KB stack = 0x10000, 1MB stack = 0x100000 */
 SECTIONS {
-  .vector ORIGIN(RAM) : {
-    *crt.o(.start_jump); /* ASM to run at boot */
-  } > RAM
+  .vector ORIGIN(ROM) : {
+    *crt.o(.start_jump);
+  } > ROM AT > ROM
 
-  .stack (NOLOAD) : {
-    . = ALIGN(16);
-    PROVIDE (_stack_end = .);
-    . = . + _stack_size;
-    . = ALIGN(16);
-    PROVIDE (_stack_start = .);
-  } > RAM
-
-  .data : {
+  .text : {
+    *(.text);
+    *(.rodata .rodata.*) /* Constants */
+    *(.srodata .srodata.*) /* read-only initialised data */
+    *(.text.*); /* seperate sections for static linked NewLib functions */
+    *(.eh_frame)
+    _rom_data_start = .;
+  } > ROM /* LMA = VMA @ ROM */
+  
+  .data : { /* initialised static variables */
+    . = ALIGN(8) ;
+    _ram_data_start = .;
     *(.rdata) /* global static data */
-    *(.rodata .rodata.*)
     *(.data .data.*) /* initialised data */
-    . = ALIGN(8);
     PROVIDE( __global_pointer$ = . + 0x800 );
     *(.sdata .sdata.*) /* small initialised data */
     . = ALIGN(8);
-    *(.srodata .srodata.*) /* read-only initialised data */
-  } > RAM
+    _ram_data_end = .;
+  } > RAM AT > ROM /* VMA @ RAM, LMA @ ROM */
+  _ram_data_size = _ram_data_end - _ram_data_start;
 
-  .bss (NOLOAD) : {
+  .bss (NOLOAD) : { /* uninitialised static variables */
 		. = ALIGN(4);
 		_bss_start = .;
     *(.sbss*) /* small uninitialised data */
@@ -877,22 +917,34 @@ SECTIONS {
     *(COMMON) /* common symbols */
 		. = ALIGN(4);
 		_bss_end = .;
-  } > RAM
+  } > RAM /* LMA = VMA @ RAM */
 
-  .text : {
-    *(.text);
-    /* *(.text.*); */ /* seperate sections for static linked NewLib functions */
-  } > RAM
+  .stack (NOLOAD) : { /* stack location */
+    . = ALIGN(16);
+    _stack_end = .;
+    . = . + _stack_size;
+    . = ALIGN(16);
+    _stack_start = .;
+  } > RAM /* LMA = VMA @ RAM */
 }
 \end{verbatim}
 \normalsize
 
+We make use of the \texttt{(AT)} keyword, to specify an alternative LMA which
+differs from our VMA. We must write firmware to copy over our static variables
+from ROM into RAM, and zero our uninitialised variables in RAM.
+
+Other sections of code are not included. The heap is unspecified, as it is
+unnecessary for the purposes of lightweight firmware. Since we are compiling C,
+we omit the C++ sections for storing static constructors \texttt{(.ctors)} and
+destructors \texttt{(.dtors)}.
+
 One of the first problems encountered was a CPU trap due to a stack overflow.
 The size of the stack may be modified in the linker file. The \texttt{embeddedartistry}
 printf implementation that avoids using heap memory stores a considerable amount
-of data on the stack. As such, we set the stack to $64$~KB, rather than the
-$4$~KB used for testing purposes. A larger stack reduces the likelihood of a
-stack overflow.
+of data on the stack. As such, we set the stack to $16$~KB, rather than the
+original $4$~KB. A larger stack reduces the likelihood of a stack overflow,
+particularly if our libraries used are dependent on a lot of stack allocations.
 
 \subsubsection{LibC \& printf}
 The standard printf function defined within the \texttt{stdio.h} header will
@@ -1321,12 +1373,6 @@ receives an interrupt signal, or when the simulation ends.
 On interrupting our program we measure a clock rate of $22406$~Hz. This is impressive for a simulation.
 % TODO: Evaluate properly
 
-\section{Synthesis}
-% TODO: Include Vivado Studio
-% TODO: SoC Map
-% TODO: MML file --- flash BlockRAM
-% TODO: P&R Diagram - highlighted!
-
 \section{Simulating an AXI4 Peripheral}
 \subsection{Methodology}
 We make use of a verilator testbench to simulate our SoC. We write some simple
@@ -1384,9 +1430,75 @@ Stall complete!
 Now that we have demonstrated a functioning testbench, and 
 % TODO: Compare to proprietary SoC?!
 
+\clearpage
+\section{Synthesis}
+\begin{figure}[b]
+  \centering
+  \fbox{\includegraphics[width=\textwidth]{./img/soc_dg.png}}
+  \caption{Block diagram of SSITH\_P1 based SoC created for the purpose of
+    synthesis, containing GPIO, UART, RAM and ROM memory-mapped peripherals.}
+\end{figure}
+We reconstruct our SoC using the block design tool within Vivado Studio. We use
+the \texttt{SSITH\_P1} core provided by the repository. While it does not have
+an FPU, it may be easily rebuilt to include one along with the Risc-V based
+\textbf{F} ISA extension.
 
+We perform a place and route (P\&R) procedure, to reveal the LUT occupancy and verify
+that the design passes timing checks at a 10 MHz clock rate. We generate an \texttt{.mml}
+file containing the information of our ROM cells from the P\&R process and
+proceed to generate a bitstream where we have initialised the RAM appropriately
+in order to flash our FPGA.
 
-\chapter{Matrix Multiplication Peripheral: Design \& Implementation}
+From our diagram/table of FPGA occupancy (Figure \ref{fig:soc_pr}/Table
+\ref{table:soc_pr}), we see that the majority of space on our FPGA is
+free. This is ample room for synthesis of an external accelerator.
+\begin{table}[b]
+  \centering
+  \begin{tabular}{l|r|r|r}
+    \toprule
+    Type  & Used & Available & \% \\
+    \midrule
+    LUT   &	20817&	63400	&32.83 \\
+    LUTRAM&	759	 &19000	  &3.99 \\
+    FF	  &16704 &126800	&13.17 \\
+    BRAM	&37.5	 &135	    &27.78 \\
+    DSP	  &15	   &240	    &6.25 \\ 
+    IO	  &16	   &210	    &7.62\\ 
+    BUFG	&2	   &32	    &6.25\\
+    \bottomrule
+  \end{tabular}
+  \caption{Xilinx Arty A7-100T FPGA occupancy statistics}
+  \label{table:soc_pr}
+\end{table}
+% TODO: Appendix
+% TODO: MML file --- flash BlockRAM
+% TODO: P&R Diagram - highlighted!
+
+With a successful P\&R at 10MHz, with no timing violations, we have a clock rate
+increase of 400-fold compared to our simulations at 24kHz.
+
+The most pronounced timing violation constraining our clock rate to 10MHz as
+opposed to 100MHz is due to the sparsity of our BlockRAM. We can see that our
+orange ROM modules (orange highlights on red rectangles), are distributed quite
+sparsely. Our system clock \texttt{(sys\_clk)} originates at the very centre of
+our chip, and the signal needs to propagate to greater distance to clock the
+sparse ROM. This becomes an issue at clock frequencies that exceed 10MHz, or if
+our firmware grows in size substantially, such that we need more ROM modules
+that may be distributed even more sparsely and further away from the system clock.
+
+Now that we have verified our SoC design through simulations, synthesis and place
+\& route and bitstream generation targetting a Xilinx Arty A7-100T, we may build
+upon our minimal functioning self-contained SoC to construct our own linear
+algebra peripheral.
+\begin{figure}[h]
+  \centering
+  \fbox{\includegraphics[width=.65\textwidth]{./img/soc_imp.png}}
+  \caption{Xilinx Arty A7-100T Place and Route diagram. Debug hub (Red), Processor (Grey), AXI Interconnect (Pink), AXI GPIO (Green), AXI Serial
+    (Brown), AXI RAM (Yellow), AXI ROM (Orange)}
+  \label{fig:soc_pr}
+\end{figure}
+
+\chapter{Linear Algebra Peripheral: Design \& Implementation}
 \section{Overview}
 \subsection{Background}
 Mathematically, the result of a matrix multiplication may be expressed
@@ -1474,8 +1586,9 @@ Like the test peripheral, our data memory consists of memory mapped
 the structure of the memory to support multiple functional units.
 
 \section{Command Issuing \& Decoding}
+% TODO: Elaborate
 \subsection{Format}
-In the hybrid model of our accelerator, and individual command must be able to
+In the hybrid model of our accelerator, an individual command must be able to
 compute an individual element of our final matrix, C. As discussed earlier,
 matrices are stored linearly in memory. 
 
@@ -1501,12 +1614,12 @@ typedef struct {
 \subsection{Decoding}
 One of the principal problems encountered between issuing a command containing
 a struct of multi-byte data to the accelerator from the embedded processor. By
-default, the unsigned integer type in BSV is in big endian form, while the
-embedded core stores data in little endian form. The motivation for embedded
+default, the unsigned integer type in BSV is in big endian, while the
+embedded core stores data in little endian. The motivation for embedded
 processors to use little endian byte ordering is to ensure that the address of a
 variable is unchanged when a typecast is performed. This saves processor cycles,
-and results in improved performance. Variables are automatically
-truncated/extended when an appropriate typecast is made. \\
+and results in improved performance. Little endian variables are automatically
+truncated/extended when an appropriate typecast is made.\\
 
 We write a C struct into our control region of memory. In order for the data
 within the instructions to be interpreted correctly in hardware, the
@@ -1514,15 +1627,32 @@ byte-ordering needs to be reversed. BSV provides us with a systematic and clean
 way of doing this within hardware. The alternative would be to reverse the bytes
 in software, and therefore lose cycles. \\
 
+\begin{lstlisting}[language=C,style=customc]
+struct MatUnitPtr {
+  uintptr_t addr;
+  uint8_t offset;
+  uint8_t stride;
+} __attribute__((packed));
+struct MatUnitArgs {
+  uint8_t unit;
+  uint8_t count;
+  struct MatUnitPtr ptr_a;
+  struct MatUnitPtr ptr_b;
+  struct MatUnitPtr ptr_c;
+} __attribute__((packed));
+\end{lstlisting}
+
 % TODO: Link to:
 % https://github.com/jeffreycassidy/BlueLink/blob/master/Core/Endianness.bsv 
 
 % TODO: C padding - citations
 Naturally, C structures are padded and aligned, where N-byte variables are
 aligned to the nearest N-byte block. Variables in a struct are extended in size
-in accordance with this padding. A structure in BSV is unpadded, and as such, it
-is vital to ensure that the structure has no padding within our C code for when
-it is written to the peripheral.
+in accordance with these padding and alignment criteria.
+A structure in BSV is unpadded, and as such, it is vital to ensure that the
+structure has no padding within our C code for when it is written to the
+peripheral.
+
 
 \section{Hardware floating point operations}
 \subsection{Fixed/Floating Point}
@@ -1857,76 +1987,147 @@ the cases where the constant offset plays a role. This is particularly relevant
 for 'flatter' matrices, where the size of our input vectors entering our
 functional units are smaller.
 
-% TODO: Evaluation: for different FU types...
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.5\textwidth]{./py/c2_fut.pdf}
+  \caption{Cycle counts of performing a hardware dot product of varying input
+    vector sizes for three different functional unit designs. We benchmark the
+    cycle count of computations for our fused multiply accumulate (FMA),
+    pipelined multiplicaton then addition (PMA) and pipelined multiplication and
+    pairwise addition (PMPA) hardware modules.}
+  \label{fig:c2_fut}
+\end{figure}
 
+Our predicted cycle counts for each of our functional units are close to the
+values obtained in simulation.
+From our data (Figure \ref{fig:c2_fut}), we observe that the cycle time of our \texttt{PMA} unit is $9N$,
+as opposed to our theoretical prediction of $7N$. This is due to additional overhead in
+switching the FSM of the accelerator after the pipelined multiplications are
+complete. The cycle time of our \texttt{PMPA} unit is $4N$,, with the additional
+overhead arising also due to the switching of our FSM. Lastly our predicted
+cycle count for our \texttt{FMA} unit of $11N$ is correct.
+
+We observe that our cycle count for our \texttt{PMPA} unit is no longer
+monotonially increasing. Interestingly, the cycle count drops very significantly when our input vector
+size is a power of 2. This is because the cycle overhead of summation of
+remainders for each 1 in the binary representation of the input vector size
+disappears once the size of our input vectors are powers of 2. This overhead is
+significantly smaller than the extra time taken to compute the dot product
+result with an extra element.
+
+Crucially, our \texttt{PMPA} module significantly outperforms the other
+functional units. This can be attributed to the extensive use of pipelining in
+order to perform the computation. Consequently, the hardware maximises the
+amount of computation throughput and occupancy of our floating point units
+multiplier and adder per cycle.
+% TODO: Improve --- parallel x and +
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.5\textwidth]{./py/c2_fut_zoom.pdf}
+  \caption{A enlarged view of cycle counts of performing a hardware dot product of varying input
+    vector sizes for small matrices.}
+  \label{fig:c2_fut_zoom}
+\end{figure}
+
+As predicted, for small matrices, $3 \times 3$ or below, (Figure
+\ref{fig:c2_fut_zoom}), our \texttt{FMA} circuit is superior due to the lower
+constant term associated with simpler hardware. Our pairwise addition steps
+within our \texttt{PMPA} unit fail to fully saturate our addition pipeline.
+After each pairwise pass we must wait for the floating point unit to flush
+before repeating the process. Since the number of elements in our input vector
+is small, we never reach full pipeline occupancy and obtain the speed
+improvements we otherwise would with larger input vector sizes. For matrices
+that are larger than this, the highly pipelined \texttt{PMPA} module is
+superior.
+
+The greatest disadvantage of functional units that are not the \texttt{FMA}
+module is the reliance on an internal \texttt{RegFile}, which will be
+synthesised as BlockRAM. Crucially, we must maintain this internal buffer of
+memory. Moreover, the dot product of input vectors exceeding the size of our
+internal buffer cannot be calculated in a single pass of our functional unit.
+
+If we seek to multiply matrices that exceed the size of our internal buffers, we
+must write appropriate firmware to split the computation up, and we run into our
+bottleneck associated with the rate at which we can issue instructions.
 
 \subsection{Functional Unit Parallelism}
 We make use of the fused multiply-accumulate functional unit for benchmarking
 purposes. This ensures that our individual functional units are saturated, and
-that our computation bottleneck is instead the number of functional units that
-are enabled.
+that our parallelism bottleneck is reached with a greater number of functional
+units. Our pipelined multiplication with pairwise addition unit is significantly
+faster and will therefore reach the bottleneck with fewer functional units, as a
+result we will need to multiply larger matrices together to obtain the same
+demonstration of this bottleneck.
 
-% TODO: Evaluation: put in unbuffered results
-\begin{table}
+We seek to benchmark the multiplication of large matrices. We multiply a
+$128\times 4$ and $4\times 128$ matrix with our accelerator.
+
+We copy our matrices from our ROM to our accelerator. We then generate commands
+within our firmware and dispatch them to our accelerator. We record the number
+of cycles taken to compute our result within our firmware,
+through using the \texttt{mcycles} CSR, and record the cycle time for our
+hardware peripheral to complete the computation within the verilator simulation.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.5\textwidth]{./py/c2_fu_unbuf.pdf}
+  \caption{Cycle count of matrix multiplication of a $4 \times 128$ and $128
+    \times 4$ matrices for a varying number of functional units. Compiled with
+    arguments: \texttt{riscv64-unknown-elf -O2 -fno-inline -march=rv32imafc -mabi=ilp32f}}
+  \label{fig:c2_fu_unbuf}
+\end{figure}
+
+\begin{table}[h]
   \centering
   \begin{tabular}{r|rr}
     \toprule
     Units & Peripheral & Processor \\
     \midrule
-    0  &     ? & 21500 \\
-    1  & 13366 & 13596 \\
-    2  &  6817 &  7085 \\
-    4  &  3670 &  3954 \\
-    8  &  2621 &  2889 \\
-    12 &  2666 &  2929 \\
-    16 &  2633 &  2916 \\
+    0&?&21383\\
+    1&14658&15155\\
+    2&7572& 7957\\
+    4&4247& 4844\\
+    8&3986& 4570\\
+    12&4133& 4707\\
+    16&3946& 4581\\
     \bottomrule
   \end{tabular}
-  \caption{Overhead: Buffer cycles: 723. Copy cycles: 4984}
+  \caption{Cycle count recorded within our hardware (Peripheral) and within our
+    firmware (Processor) for our matrix multiplication benchmark. Overhead: Copy cycles: 4982}
+  \label{table:c2_fu_unbuf}
 \end{table}
 
 
+
+From our plots (Figure \ref{fig:c2_fu_unbuf}) we observe that our cycle count
+stops decreasing after 4 functional units are used simultaneously. As a
+consequence, we are not reaching maximum utilisation of our compute resources on
+our accelerator. This is because the rate at which we can issue instructions
+becomes a bottleneck.
+
+We observe a $\approx 300$~cycle discrepancy between our cycle counts when the
+operation completes on our accelerator and our firmware. 
+
+Nevertheless, we do obtain a significant performance improvement. If we pre-load
+our data onto the accelerator, we observe a $4\times$ cycle count improvement
+with 4 functional units when multiplying large matrices. Upon further
+optimisation, it 
+
+
 \subsection{Synthesis}
-\subsubsection{Memory Striping}
-One of the big problems with our accelerator is the design of the multi-ported
-memory. By duplicating our memory writes across $n$ channels for $n-1$
-functional units, we occupy a very significant amount of BlockRAM on our
-accelerator.
+% TODO: POPULATE --- VITAL
 
-% TODO: Synthesis
-% The process of synthesis becomes a very delicate balance between...
-
-
-Given more time, we could instead stripe our memory into separate banks, with a
-low probability that more than two indexes are read from the same bank in the
-same cycle. While this is unlikely due to the nature of memory accesses for matrix
-multiplication, this can be made easier by also duplicating the striped memory
-banks as shown previously.
-
-% TODO: Analysis: Math to show memory consumption.
-
-One of the most important considerations when implementing this form of striped
-memory is how to apply the associated back-pressure when two functional units
-are reading from the same memory bank in the same channel. One of the units
-would need to be stalled. It is likely that the processing and scheduling logic
-for this would lead to wasted cycles, and therefore a reduction in compute
-speed. It would be an interesting exercise to see how this reduction in compute
-speed compares to the savings in BlockRAM.
-
-
-% TODO: Alternative proposition --- bank/striped memory
-% TODO: Put in further work
-% Difficult to apply appropriate backpressure, --- perhaps look into further (Conclusion)
-
-
-\chapter{Commmunication \& Memory Bottleneck}
+\chapter{Commmunication \& Memory Bottleneck: Further Work}
 From our earlier results, we observe that at some threshold, a greater number of
 functional units does not necessarily translate into a greater accelerator
 throughput. 
 
-\section{Design \& Implementation}
-\subsection{Protocol efficiency/optimisation}
-One of the most obvious ways of improving the communication rate is to.
+\section{Protocol efficiency/optimisation}
+One of the most obvious ways of improving the communication rate is to compress
+or improve the communication procotol. One of the ways in which we improve the
+protocol is by packing our strust.
+
 
 % Analysis of struct packing
 % Attribute ((packed))
@@ -1945,7 +2146,7 @@ One of the most obvious ways of improving the communication rate is to.
 % Therefore 0-cost LE typecast <---> address calculation! (SMART)
 
 
-\subsection{Firmware Command Buffering}
+\section{Firmware Command Buffering}
 To address the issue of not being able to issue commands fast enough, we
 pre-generate all of our commands in the stack such that we don't waste cycles
 generating commands between issuing them.
@@ -1978,7 +2179,7 @@ generating commands between issuing them.
 
 % TODO: Accelerator buffer/program counter. (Internal stack)
 
-\subsection{Firmware Stalling/Interrupts}
+\section{Firmware Stalling/Interrupts}
 One of the potential criticisms of the technique of constantly polling a region
 of memory is that
 
@@ -1998,7 +2199,7 @@ From the SiFive interrupt cookbook, we see:
 void machine_external_interrupt()
 {
    //get the highest priority pending PLIC interrupt
-   uint32_t int_num = plic.claim_comlete;
+   uint32_t int_num = plic.claim_complete;
    //branch to handler
    plic_handler[int_num]();
    //complete interrupt by writing interrupt number back to PLIC
@@ -2013,11 +2214,24 @@ interrupt claim to be complete, and running the interrupt handler. Within our
 interrupt handler we would need to then read from our accelerator memory to
 determine which of our functional units are busy before issuing a new command.
 All of this associated overhead would significantly reduce the ability of our
-processor to rapidly issue instructions.
+processor to rapidly issue instructions. There is also the additional overhead
+of moving the variables in all of our registers into the stack when the
+interrupt function is called. Crucially, we observe that the associated latency
+of processing interrupts greatly supercedes that of looping and polling a region
+of memory to determine whether an operation within the accelerator has completed.
 
-\subsection{Hardware Command Buffering}
+\section{Hardware Command Buffering}
+                                                                                                                                                              
+One of the problems with firmware buffering is that the memory wall of issuing
+commands to the accelerator still exists. Within hardware buffering, we
+pre-emptively issue commands into an 'instruction' region of hardware and set
+a 'program counter' on execution. 
+
+
 % Very high savings --- best for small matrices, --- 32~ elements
-% TODO: Fix scheduling conflicts. 
+% TODO: Fix scheduling conflicts.
+
+
 
 \subsection{Rule conflicts, rapid execution}
 
@@ -2028,10 +2242,10 @@ processor to rapidly issue instructions.
 
 \subsection{Other ideas}
 % TODO: Why did we ignore interrupts. PLIC IS SLOW
+% TODO: 64-bit bus
 
 
-
-\subsection{Instruction jumping}
+\section{Instruction jumping}
 One of the more novel ideas for getting a marginal speed-up in issuing commands
 is to reduce the processor branching overhead by incoorporating the stalling
 logic into the processor itself.
@@ -2059,17 +2273,7 @@ void __attribute__((noinline, section(".dummy_section"))) func_test() {
 extern unsigned char dummysec_start[];
 extern unsigned char dummysec_end[];
 void main() {
-  //print("Hello, world!\n");
-  //mstatus_init();
-  //init_stack();
-
-  //accel_buffered_test();
-
-  // GOTO TEST!
-
-  /* asm ("addi sp,sp,-4"); */
   /* uint32_t label_addr = &&label_test; */
-  /* printf("Label Address: %X\n", label_addr); */
 
   uint32_t func_size = dummysec_end-dummysec_start;
   /* printf("Func Size: 0x%X\n", func_size); */
@@ -2095,25 +2299,28 @@ func_test address: 80010C98
 Meme!
 \end{verbatim}
 
+\subsection{Memory Striping}
+One of the big problems with our accelerator is the design of the multi-ported
+memory. By duplicating our memory writes across $n$ channels for $n-1$
+functional units, we occupy a very significant amount of BlockRAM on our
+accelerator.
 
-
-
-
-% TODO: Example + study (Evaluation)
-
-
-
-
-\section{Synthesis}
 % TODO: Synthesis
-\subsection{Firmware modification}
+% The process of synthesis becomes a very delicate balance between...
+Given more time, we could instead stripe our memory into separate banks, with a
+low probability that more than two indexes are read from the same bank in the
+same cycle. While this is unlikely due to the nature of memory accesses for matrix
+multiplication, this can be made easier by also duplicating the striped memory
+banks as shown previously.
 
-
-\subsection{Vivado simulation}                                     
-
-\subsection{Implementation}
-
-\subsection{Xilinx Arty A7-100T}
+% TODO: Analysis: Math to show memory consumption.
+One of the most important considerations when implementing this form of striped
+memory is how to apply the associated back-pressure and arbitration when two functional units
+are reading from the same memory bank in the same channel. One of the units
+would need to be stalled. It is likely that the processing and scheduling logic
+for this would lead to wasted cycles, and therefore a reduction in compute
+speed. It would be an interesting exercise to see how this reduction in compute
+speed compares to the savings in BlockRAM.
 
 \chapter{Summary and Conclusions} 
 
@@ -2131,9 +2338,7 @@ Meme!
 \appendix
 \singlespacing
 
-\bibliographystyle{unsrt} 
-% \bibliography{dissertation} 
-
+\printbibliography
 % Bibliography:
 % RISC-V GCC, ISA, Spike
 % BSV Reference Guide
