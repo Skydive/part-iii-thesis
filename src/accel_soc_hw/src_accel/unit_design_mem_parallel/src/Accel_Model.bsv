@@ -149,7 +149,8 @@ module mkAccel(Accel_IFC#(banks));
    Vector #(32,  Reg #(Bit #(8))) rgv_control <- replicateM(mkConfigReg(0));
    Vector #(32,  Reg #(Bit #(8))) rgv_command <- replicateM(mkReg(0));
    //Vector #(256, Reg #(Bit #(8))) rgv_data <- replicateM(mkReg(0));
-   MultiPortBRAM#(Bit#(16), FSingle, TAdd#(banks,1)) rgv_data <- mkMultiPortBRAM;
+   // 16KB = 4KB * 4 = 4096 cells * 4B/cell
+   MultiPortBRAM_IFC#(Bit#(16), FSingle, TAdd#(banks,1)) rgv_data <- mkMultiPortBRAM(0, 4095);
 
    // These regs represent where this UART is placed in the address space.
    Reg #(Fabric_Addr) rg_addr_base <- mkRegU;

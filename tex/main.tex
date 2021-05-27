@@ -39,7 +39,7 @@
 \usepackage{amsmath,amssymb}
 \usepackage{fancyvrb,listings}
 
-\usepackage[a4paper, margin=1in]{geometry}
+\usepackage[a4paper, margin=2cm]{geometry}
 
 \usepackage{tikz}
 \usetikzlibrary{shapes,arrows}
@@ -104,79 +104,81 @@
 % NOTE: Analysis of requirements and justified & documented use of tools!
 
 
-% Include image:
-% TODO: AMD acquisition of Xilinx --- Intel acquisition of Altera
-%% Modern processor structure
-%% Seems increasingly likely that an FPGA fabric may be placed within
-%% microprocessors
-%% Incremental 'hardware' updates to custom processing pipelines --- fix
-%% hardware vulnerabilities
 
-% Coupled with:
-% Growth of open-source FPGA tools \& alternative synthesis languages
-% Easier to implement custom processing pipelines that are optimised for very
-% specific operations
+% TODO: Altera: https://dl.acm.org/doi/10.1145/2847263.2857658
+% https://newsroom.intel.com/wp-content/uploads/sites/11/2018/05/moores-law-electronics.pdf 
+% Incredibly expensive: EUV
+With the end of Moore's law approaching, transistors can no longer be further
+miniaturised and single-digit nanometre lithography techniques remain incredibly
+expensive. In this environment, it is increasingly common to have accelerators
+within system-on-chips (SoCs), where hardware-level specialisation is vital for
+good performance in compute tasks. Given the recent acquisition of Xilinx by
+AMD, and Altera by Intel in 2015, the dominant microprocessor manufacturers have
+both entered the realm of reprogrammable hardware. It therefore seems
+increasingly likely that an FPGA fabric may be placed within microprocessors for
+creating specialised accelerators, where incremental \textit{hardware updates}
+may be applied to custom processing pipelines. This is of vital importance in
+performance and safety critical systems, such as: self-driving cars.
+Hardware-level vulnerabilities, such as: Spectre and Meltdown, can give a
+malicious adversary a substantial attack surface that would not exist if the
+vulnerable sections of hardware could be reprogrammed appropriately.
 
-% Work on Story
-% Embedded Devices
-% Common for embedded devices to have their own acclerators
-% Reconfigurable hardware, software updates, self-driving cars.
-% RiscV - ^ - 
+Coupled with the recent massive growth of open-source FPGA tooling, high-level
+hardware design languages, and publically available Risc-V processor designs, it
+has become substantially easier to design, simulate, and deploy a highly
+customised accelerator. Our high-level hardware design languages allow our
+designs to be parameterised, a particularly important feature when designing
+hardware for an embedded device where we have tight silicon area, power and
+thermal constraints.
 
-% Seek to optimise openness & interoperability
+Linear algebra operations are widely used for machine learning purposes in
+embedded devices. The existing pressures within the sphere of hardware design
+compel us to develop an accelerator for this purpose, where we may make use of
+publically available open source tooling. This provides us with a strong
+foundation to base our work off.
 
-% Embedded device, variable footprint (Bluespec parameterised)
-% Linear algebra accelerator --- machine learning, and
-% Tightly coupled accelerator and CPU.
-
-% Maximise throughput without sacrificing interopability
-% --- Open source principles
-
-% Shy away from SIMD extensions. No ARM license, 
-
-
-% What are our main contributions:
-% Improved upon/got working (FPU) testbench (verilator) for rapid prototyping and simulations
-% Wrote functioning bare-metal firmware for a RiscV CPU
-% Minimise dependence on proprietary and closed-source software + toolchains
-
-% Accelerator: VLIW/Superscalar execution (?)
-
-% Bluespec: Customisable number of functional units, varying silicon area.
-% In the best case, obtained an approx 10x speed-up through hardware buffered
-% commands. 
-
-
-% TODO: Talk about modern processors structure - Internal FPGA - motivations
-% Relate to Intel Acquisition of Altera --- (Recent) AMD Acquisition of Xilinx
-% Looks inc
-% TODO: Silicon surface? Embedded systems. - Which do I pick!?
-% Mainly ^^ 
-
-% TODO: Link to requirements
+Previously, it was thought that SIMD and vector instructions would offer a
+significant enough performance improvement that they would supercede the
+development cost of an accelerator. Crucially, this comes at a cost of
+interoperability, where we are constrained to a particular processor model that
+has the ISA extension implemented and therefore a greater silicon area and power
+consumption. An accelerator developed as a processor peripheral may be used
+across different processor types, and ISAs, whilst simultaneously providing a
+superior performance enhancement compared to vector instructions. This provides
+the designer with greater choice and flexibility, particularly important when
+designing an embedded device.
 
 \section{Contributions}
-This thesis is split into three main sections. In the first chapter, we fix
-latent problems within the Bluespec Inc. Piccolo processor, attach our own
-proof-of-concept memory mapped peripheral to the AXI4 bus, and design Risc-V
-bare metal firmware to interface with the peripheral. We make use of the
-modified Verilator testbench to verify the correctness of our design. This is
-vital prerequisite work to base our later work off.
+This thesis is split into three main chapters. In the first chapter we perform
+vital prerequisite work to obtain a minimal system to base our later work on.
+We fix latent problems within the floating point unit of the Bluespec Inc.
+Piccolo processor, attach our own proof-of-concept memory mapped peripheral to
+the AXI4 bus, and design Risc-V bare-metal firmware to interface with this
+peripheral. We make use of a modified Verilator testbench to verify the
+correctness of our design and rapidly develop the peripheral. Lastly, we perform
+synthesis, run place \& route algorithms and generate a bitstream to verify the
+feasibility of our design, demonstrating that we can reach clock frequencies of
+10MHz without encountering timing violations.
 
 In our second chapter, we elaborate on our design principles and methodology for
 designing our linear algebra accelerator. We implement and benchmark the behaviour
 of differently designed functional units of increasing complexity. We also delve
 into the memory modifications required to support multiple functional units and
-exploit the further parallelism offered by hardware. We benchmark our different
-types of functional units, and benchmark the performance of our accelerator
-while varying the number of functional units.
-% TODO: We evaluate our design through Synthesis on an FPGA (Separate section)
+exploit the further parallelism offered by hardware. We determine that the
+principal bottleneck in the speed of our accelerator is the rate at which we can
+issue instructions.
 
-During our benchmarks of our accelerator, we run into the problem of the memory
-wall. More specifically, 
+In our third chapter, we address a range of methods to target the previously
+encountered bottleneck. We examine ways of compressing our protocol, and
+contemplate alternative designs to our accelerator. We attempt to buffer issued
+instructions and reduce the latency between the processor and accelerator to
+make them more tightly coupled.
 
-% TODO: Chapter 3 description
-In our third chapter, we address a range of methods for removing this bottleneck.
+Throughout the development process we minimise our dependence on closed source
+and proprietary components and attempt to strongly adhere to open source
+principles. We take advantage of this through a rapid development and
+prototyping procedure that would not be possible if we are constrained to using
+the traditional HDL computer aided design (CAD) tools (Xilinx/Quartus).
 
 
 \chapter{Background}
@@ -314,8 +316,8 @@ programmable logic blocks range from boolean logic lookup tables (LUTs), clocks,
 registers, DSP units and block RAM. The lattice of programmable logic cells can
 be flashed, where the individual hardware units are programmed, and connected
 together by configurable wires such that the circuit described in hardware is
-physically created. A processor simulated on an FPGA can typically be clocked at
-a few hundred MHz. An FPGA can therefore offer over a thousand-fold performance
+physically created. A processor simulated on an FPGA can typically be clocked on
+the order of MHz. An FPGA can therefore offer over a thousand-fold performance
 increase compared to conventional software simulations of hardware circuits.
 
 Unlike software simulations using verilator, an FPGA can suffer from physical
@@ -452,12 +454,9 @@ ChiselHDL, whilst the Risc-V Piccolo, Flute and TOOOBA processors are written in
 BSV. The creation of a soft-core processor is a demonstration of the ability of
 these languages to be applied in practice and make the process of processor
 design more efficient and structured.
-% TODO: Downsides of traditional Verilog
-% TODO: \subsection{High-level synthesis}
-
 
 % TODO: Cite https://people.eecs.berkeley.edu/~krste/papers/chisel-dac2012.pdf 
-\subsection{ChiselHDL}
+\subsection{ChiselHDL \& Bluespec Verilog}
 Chisel (Constructing Hardware In a Scala Embedded Language), is a new
 programming language for hardware design that is based on Scala, that is
 executed on a JVM.
@@ -466,12 +465,15 @@ Chisel is capable of generating low-level Verilog from high-level hardware
 design patterns that are written in Scala.
 
 Chisel allows inputs and outputs of modules to be bundled together, and
-components to be
+modules to be composed with ease. Code may be written in Scala to construct
+hardware and therefore speed up the development process.
 
 % Chisel generator / example
 % Chisel I/O / Module + Bundle of Bundles
 
-This is best demonstrated with the AXI4 protocol:
+This is best demonstrated with the AXI4 protocol, 
+the mess of wire connections, as seen above with standard Verilog, is no longer
+an occurence due to the object-oriented nature of Chisel.
 \tiny
 \begin{verbatim}
 class AXIPeripheral extends Module {
@@ -483,35 +485,18 @@ class AXIPeripheral extends Module {
 \end{verbatim}
 \normalsize
 
-Code may be written in Scala to generate hardware.
-
-
-% TODO: Chisel Bundle, Component (explain)
-
-% Features
-% Atomic rules, structs,
-% Correct concurrency - strict avoidance of race conditions
-
-% Superior to Chisel: rules + methods
-% All types are first-class --> functions can be used as arguments/parameters of
-% other functions and modules.
-
-% Static & dynamic elaboration
-
-% BSV --> Bluesim (small simulations)
-% BSV --> Verilog RTL --> Verilator / Synthesis
-
-% Example code / Comparisons
-% Benefits
-
+Bluespec Verilog offers significant advantages over ChiselHDL. These are
+explained more thoroughly in later sections. In Chapter 2, we make use of the
+libraries available within BSV to perform floating point computations with ease.
+In Chapter 3, we exploit the advanced scheduling capabilities of BSV to issue
+computations to different hardware units, and make extensive use of pipelining
+for greater concurrency in our floating point computations. We later discuss the
+Rocket and Piccolo processors written about in a later section.
 % TODO: Cite https://dl.acm.org/doi/abs/10.1109/MEMCOD.2004.1459818 
-
-
-% TODO: Talk about SystemC \& HLS...
 
 \chapter{Related Work} 
 \section{BlueVec}
-% https://www.cl.cam.ac.uk/~swm11/papers/FPL2013-BlueVec.pdf
+% TODO: Cite https://www.cl.cam.ac.uk/~swm11/papers/FPL2013-BlueVec.pdf
 The BlueVec co-processor is a vector processor aimed at accelerating neural
 network inference designed to address the computation botleneck of the problem
 of the \emph{memory wall}.
@@ -597,14 +582,6 @@ improvements demonstrated by BlueVec for vector processing.
 % NOTE: Are there truly multiple functional units? Instructions STALL the cpu.
 % NOTE: Unadjustable silicon consumption --- less control!
 
-% TODO: ZynqNet - Literature Review
-% NOTE: ZynqNet --- too SPECIFIC, NN architecture needed beforehand.
-%\section{ZynqNet}
-
-% TODO: Read ZynqNet Paper
-% How to contextualise!?
-% NO general-purpose linalg unit
-
 % Google TPU? & Nvidia GPUs? --- Look into
 
 % TODO VLIW?
@@ -620,24 +597,30 @@ improvements demonstrated by BlueVec for vector processing.
 % TODO: Look at Linpack library
 % https://link.springer.com/article/10.1007/s11390-011-0184-1
 
+%\section{GPU processing}
+% The work by ... reveals that ...
 
 % GPUs are slow for small matrices --- CUDA cores not fully occupied 
 % https://ietresearch.onlinelibrary.wiley.com/doi/epdf/10.1049/joe.2018.9178
 
-\section{SIMD}
+% TODO: Cite SIMD
+\section{SIMD ISA extensions}
 The SIMD acronym refers to processor instructions that operate on multiple
 registers of data (Single Instruction Multiple Data). We therefore save
 processor cycles through a technique known as DLP (Data level parallelism),
-where processor instructions, and therefore fewer cycles, are required in order
-to perform the same mathematical operation.
+where fewer processor instructions are required in order to perform the same
+mathematical operation. High-performance desktop and server systems that use the
+\texttt{x86\_64} ISA have the AVX-512 and SSE instruction set extension for
+vector processing, while the ARM ISA has the Neon extension for vector
+processing on mobile devices.
 
-\subsection{Risc-V Vector ISA extension}
+% TODO: Cite Vector ISA
 The Risc-V ISA has the (\textbf{V}) extension to support vector instructions.
 That is, instructions that operate on a contiguous region of memory. The ISA
 extension specifies the existence of vector registers which may be some power of
 2 larger than a traditional 4-byte (32-bit) register. Mathematical operations
 may then be simultaneously applied to groups of numbers loaded in these vector
-register.
+registers.
 
 Crucially, the Risc-V vector extension has not yet been ratified. As such, its
 features may change, and it is unwise to implement the instructions as the ISA
@@ -646,39 +629,12 @@ Risc-V foundation needs to be certain that the definition of the ISA extension
 is infallible, where considerations of backwards compatability and the necessity of
 the proposed instructions are verified by a group of experts.
 
-Moreover, The vector ISA extension consists of 184
+Moreover, the vector ISA extension consists of 184
 additional instructions, exceeding the preexisting 129 instructions in the
 RV32IMAFC combination. A very substantial modification to the decode and
 execution sections of the processor will need to be made at the cost of a great
 deal of silicon space. Even if the ISA is implemented, compilers do not yet
-support producing vector instructions in machine code.
-
-
-\subsection{ARM Neon/x86 SSE,AVX}
-% TODO: elaborate - what are the key disadvantages
-% TODO: Small subsection at top of SIMD!?
-The AVX-512 instruction set extension consists of 16 x 4 byte, or 512-bit,
-registers. 
-
-Perhaps the principal disadvantage of vector ISAs is that a small subset of the
-ISA is required to accelerate a particular task at hand. While it is necessary
-for the entire ISA to be implemented at the cost of both silicon surface and
-power efficiency.
-
-
-
-% TODO: ARM Neon / Risc-V 'V' extension
-% Why is ratification slow --- needs to be done CORRECTLY!
-% Think about future support, backwards compatability.
-% Some applications only need one part of it.
-% Neon SSE/AVX
-% Neon is defined within ARM ISA
-% Very heavyweight --- complex decoding logic, lots of instructions
-% ARM isn't truly RISC. --- SIMD extensions
-
-% speciality --- linear algebra - dot products. Lots of writing/reading. Gain
-% order of magnitude efficiency for SPECIFIC matrix multiplication.
-% NN, 
+support producing vector instructions in generated machine code.
 
 \section{Open Source Cores}
 Since we seek to minimise the use of proprietary, and closed-source libraries,
@@ -686,14 +642,16 @@ we avoid using proprietary soft-cores. Notably, Xilinx has its Microblaze
 processor, while Altera has its Nios II cores. We may base our accelerator on
 one of these, but we are immediately locked into either the Xilinx or Altera
 proprietary hardware development (CAD) ecosystems. It is not even possible to
-simulate an SoC of one of these processor attached to our peripheral
+simulate an SoC of one of these processors attached to our peripheral without
+their proprietary tooling.
 Moreover, the proprietary simulation tools offer similar or worse performance
 compared to Verilator. Verilator provides us with less-overhead and greater
 freedom within our simulations, giving us direct control to our testbench with
-C++. In contrast, the proprietary xsim, and modelsim have more required overhead
-to generate a clock, initialise our memory and simulate an SoC.
+C++. In contrast, the proprietary xsim, and modelsim have an associated overhead
+of generating a clock and initialising our memory using the bloated the clunky
+proprietary CAD tools to simulate our SoC.
 
-\subsection{Rocket}
+\subsection{Rocket \& RoCC}
 % TODO: talk about Rocket
 % TODO: Cite Rocket Chip Generator:https://www2.eecs.berkeley.edu/Pubs/TechRpts/2016/EECS-2016-17.pdf 
 The Rocket processor is written in ChiselHDL. It is packed with a utility known
@@ -736,17 +694,20 @@ The Bluespec designed processors take full advantage of the modular nature of
 processor design that is made possible through the use of Bluespec Verilog.
 Seperate processor ISA extensions, the processor register width, and the AXI4
 bus size may be set appropriately on compilation of the BSV code into Verilog
-RTL.
+RTL. The ability of BSV to support atomic rules, and specify complex scheduling
+relations makes it particularly suited for processor design.
 
-Bluespec Inc. has created three example processors, the Piccolo processor
+Bluespec Inc. has created three example processors. The Piccolo processor
 consists of a 3-stage in-order pipeline, and is designed primarily for small
 embedded systems. The Flute processor contains a 5-stage in-order pipeline, and
-contains an MMU, allowing it to obtain a higher clock rate and boot a linux OS.
-The Toooba processor, based on the MIT Riscy-OOO, has a superscalar architecture
+contains an MMU, allowing it to support virtual memory and boot a linux OS.
+The TOOOBA processor, based on the MIT Riscy-OOO, has a superscalar architecture
 and supports out-of-order execution.
 
-All of these designed processors have the advantage of an example testbench
-created in BSV. The HDL may be quickly compiled, and .
+All of these designed processors have the advantage of providing an example
+testbench created in BSV. The HDL may be compiled and firmware may be executed
+within simulations, this provides us with a functioning start point to base our
+work on.
 
 %\chapter{Design and Implementation}
 % NOTE: Main contribution to (the field?)
@@ -1269,7 +1230,6 @@ Bluespec Verilog offers a significant degree of abstraction when processing AXI4
 read and write requests, and also when attaching the peripheral to the AXI4 bus interconnect.
 % TODO: Include code!
 
-
 % TODO: Include picture of Vivado SoC
 Proprietary CAD tools, such as Xilinx Vivado, typically have a built-in block
 design tool. The built in design tool allows the developer to see the SoC as a
@@ -1334,44 +1294,78 @@ This is vital to keep in mind throughout writing to peripheral memory. An
 integer must be aligned to 4 bytes, a short to 2 bytes, and a char to the
 nearest byte. 
 
-\subsubsection{Struct Padding}
-% TODO: Introduce the need for struct padding/packing
-This is of particular importance to consider later when we issue commands to the
-accelerator. By default, a C struct is padded and aligned to conform to the
-alignment of memory access. When a struct is written to memory, it always begins
-at the nearest 4 byte boundary. All datatypes within a struct ar aligned to the
-nearest 4, For instance:
+% \subsubsection{Struct Padding}
+% % TODO: Introduce the need for struct padding/packing
+% This is of particular importance to consider later when we issue commands to the
+% accelerator. By default, a C struct is padded and aligned to conform to the
+% alignment of the way memory is accessed. When a struct is written to memory, it
+% always begins at the nearest 4 byte boundary. All datatypes within a struct ar
+% aligned to the nearest 4, For instance:
 
-\begin{verbatim}
-struct paddedstuff_t {
-    uint16_t A; // short (2B) --> (4B) PADDED to ALIGN to nearest 4 bytes
-    uint32_t B; // int (4B)
-}; // 8 BYTES
-struct packedstuff_t {
-    uint16_t A; // short (2B)
-    uint32_t B; // int (4B) ---> Will write at base+0x2
-} __attribute((packed)); // 6 BYTES
-\end{verbatim}
+% \begin{verbatim}
+% struct paddedstuff_t {
+%     uint16_t A; // short (2B) --> (4B) PADDED to ALIGN to nearest 4 bytes
+%     uint32_t B; // int (4B)
+% }; // 8 BYTES
+% struct packedstuff_t {
+%     uint16_t A; // short (2B)
+%     uint32_t B; // int (4B) ---> Will write at base+0x2
+% } __attribute((packed)); // 6 BYTES
+% \end{verbatim}
 
 
 \chapter{SoC \& Testbench Setup: Evaluation}
 \section{Clock rate within simulation}
 \subsection{Methodology}
-% TODO: Why was Piccolo chosen(?) --- backtrack
 The Piccolo processor was chosen due to its relative simplicity. With a simple
 3-stage in-order pipeline, the generated C++ should be relatively simple
-compared to the 5-stage pipeline in the Flute processor, and the out-of-order
+compared to the 5-stage pipeline in the Flute processor and the out-of-order
 superscalar architecture of the TOOOBA processor. As a consequence, we would
-therefore maximise the likelihood that we obtain a reasonable clock rate.
+therefore increase the likelihood that we obtain a reasonable clock rate in
+simulations, and have a faster testbench compile-time.
 
-% TODO: Include modified testbench code. std::chrono
-% TODO: How to measure clock rate!?
-We modify the testbench program to output the clock rate when the testbench is
-receives an interrupt signal, or when the simulation ends. 
+We modify the existing Piccolo testbench program to output the clock rate when
+the testbench is receives an interrupt signal, or when the simulation has come
+to an end. This is done as follows, we keep track of the time throughout our
+simulation and divide the number of simulated cycles by the time elapsed.
+\begin{lstlisting}[language=C,style=customc]
+using namespace std;
+using namespace std::chrono;
+
+steady_clock::time_point tp_begin;
+
+void print_clock_rate() {
+  uint64_t cycle_count = main_time/10;
+  steady_clock::time_point tp_end = steady_clock::now();
+  uint64_t time_elapsed = duration_cast<seconds>(tp_end-tp_begin).count();
+  cout << "Clock Rate: " << cycle_count/time_elapsed << " Hz" << endl;
+}
+
+void sigint_callback_handler(int signum) {
+  cout << "Interrupted" << endl;
+  print_clock_rate();
+  SIG_DFL(signum);
+  //exit(signum);
+}
+
+int main (int argc, char **argv, char **env) {
+    Verilated::commandArgs (argc, argv);    // remember args
+    signal(SIGINT, sigint_callback_handler);
+    // TESTBENCH INIT...
+    tp_begin = steady_clock::now();
+    // TESTBENCH START... (LOOP)
+    // TESTBENCH FINISH
+    print_clock_rate();
+    return 0;
+}
+\end{lstlisting}
+
 
 \subsection{Results}
-On interrupting our program we measure a clock rate of $22406$~Hz. This is impressive for a simulation.
-% TODO: Evaluate properly
+On interrupting our program we measure a clock rate of $22406$~Hz. This is
+sufficient for running a simulation of interactions with a peripheral. Moreover,
+we are confined to using bare-metal firmware, as our clock rate is too low to
+boot an operating system.
 
 \section{Simulating an AXI4 Peripheral}
 \subsection{Methodology}
@@ -1413,6 +1407,7 @@ void main() {
 
 \subsection{Results}
 % NOTE: Console log
+\small
 \begin{verbatim}
 0: 0
 1: 1
@@ -1426,11 +1421,12 @@ Stall complete!
 2: 4
 3: 6
 \end{verbatim}
+\normalsize
 
-Now that we have demonstrated a functioning testbench, and 
-% TODO: Compare to proprietary SoC?!
+We successfully write numbers to our accelerator memory and double them all in a
+single clock cycle by issuing a command to our accelerator. Now that we have
+demonstrated a functioning testbench, we proceed to the synthesis stage. 
 
-\clearpage
 \section{Synthesis}
 \begin{figure}[b]
   \centering
@@ -1438,6 +1434,16 @@ Now that we have demonstrated a functioning testbench, and
   \caption{Block diagram of SSITH\_P1 based SoC created for the purpose of
     synthesis, containing GPIO, UART, RAM and ROM memory-mapped peripherals.}
 \end{figure}
+
+While it is technically possible to synthesise a design using the Symbiflow
+toolchain on an Arty A7-100T, this particular model has a very significant
+number of LUTs and the open source place and route algorithm is slower and less
+optimised than the proprietary one in Xilinx Vivado. Additionally, Vivado
+provides us with more detailed information about timing violations and a place
+and route diagram revealing the structure of the hardware to us in a visual
+manner. This is invaluable, and is on balance why we decide to avoid using the open
+source toolchain for the purpose of synthesis.  
+
 We reconstruct our SoC using the block design tool within Vivado Studio. We use
 the \texttt{SSITH\_P1} core provided by the repository. While it does not have
 an FPU, it may be easily rebuilt to include one along with the Risc-V based
@@ -1486,10 +1492,11 @@ sparse ROM. This becomes an issue at clock frequencies that exceed 10MHz, or if
 our firmware grows in size substantially, such that we need more ROM modules
 that may be distributed even more sparsely and further away from the system clock.
 
-Now that we have verified our SoC design through simulations, synthesis and place
+Now that we have verified our SoC design through simulations, synthesis, place
 \& route and bitstream generation targetting a Xilinx Arty A7-100T, we may build
 upon our minimal functioning self-contained SoC to construct our own linear
 algebra peripheral.
+
 \begin{figure}[h]
   \centering
   \fbox{\includegraphics[width=.65\textwidth]{./img/soc_imp.png}}
@@ -1509,16 +1516,18 @@ accordingly:
 \end{align*}
 
 Matrix multiplication may be expressed in a programmatic form as such:
+\begin{center}
 \texttt{C[i][j] = sum zipWith (op*) (row A i) (col B j)}
-
+\end{center}
 When matrices are stored in memory, they can only be indexed with a single
 dimension. A multi-dimensional matrix is represented as a multi-dimensional
 array, this array is represented in memory in as a flattened contiguous
-one-dimensional array, with the rows of the matrix next to each other in memory.
+one-dimensional array, with the rows of the matrix next to each other laid of
+sequentially in memory.
 
 Consequently we access the element on the xth row, and yth column of a matrix as
-such:
-$$ \text{IndexOf} A[x][y] = x + y * width(A) $$
+follows:
+$$ \text{IndexOf}\,\, A[x][y] = x + y * \text{width}(A) $$
 
 This methodology of accessing the x, and y elements of a stored matrix is used
 throughout the accelerator.
@@ -1542,15 +1551,15 @@ pursue a monolithic approach and implement the entire matrix multiplication
 operation purely in hardware. Alternatively, we could perform a hybrid approach,
 where each element of the matrix \texttt{C[i][j]} may be computed by issuing a
 separate command to the accelerator. This is performed under the assumption that the
-creation and scheduling of instructions for each element in the final matrix, is
-more easily performed within the firmware of the embedded processor, without a
+creation and scheduling of instructions for each element in the final matrix is
+more easily performed within the firmware of the embedded processor without a
 significant perfomance penalty.
 
 \subsubsection{Memory Regions}
 We split our accelerator memory into seperate memory-mapped regions. We
 interface with our accelerator through the AXI4 bus by writing and reading from
 memory appropriately.  
-\begin{table}
+\begin{table}[h]
   \centering
   \begin{tabular}{lll}
     \toprule
@@ -1558,10 +1567,16 @@ memory appropriately.
     \midrule
     \texttt{0x0000-0x0020} & 32 Bytes & Status \\
     \texttt{0x0020-0x0040} & 32 Bytes & Control \\
-    \texttt{0x0040-0x1000} & $\approx$ 4 KB & Memory \\
+    \texttt{0x0040-0x1000} & $\approx$ 16 KB & Memory \\
     \bottomrule
   \end{tabular}
+  \caption{Memory regions within our linear algebra accelerator.}
 \end{table}
+
+Like the test peripheral, our data memory consists of a memory mapped
+\texttt{RegFile} to make use of FPGA BRAM cells. In the later section, we modify
+the structure of the memory to support multiple functional units, where the same
+address will map to multiple RegFiles.
 
 \subsubsection{Status}
 The first bit of our status register in memory exists to monitor the execution
@@ -1580,20 +1595,37 @@ written, it is executed by setting the execute status bit within the control
 register. The accelerator should then dispatch the appropriate command to one of
 its functional units if it is free.
 
-\subsubsection{Memory}
-Like the test peripheral, our data memory consists of memory mapped
-\texttt{RegFile} to make use of FPGA BRAM cells. In the later section, we modify
-the structure of the memory to support multiple functional units.
-
-\section{Command Issuing \& Decoding}
-% TODO: Elaborate
+\section{Command Issuing \& Decoding Protocol}
 \subsection{Format}
 In the hybrid model of our accelerator, an individual command must be able to
 compute an individual element of our final matrix, C. As discussed earlier,
-matrices are stored linearly in memory. 
+matrices are stored linearly in memory. We provide initial addresses, offsets,
+and strides for vector access of the respective row in matrix A, and column in
+matrix B, and the relevant output address and offset for our element of matrix
+C. From this information, our accelerator can instruct a functional unit to
+perform the appropriate dot product.
 
+\subsection{Decoding}
+One of the principal problems encountered between issuing a command containing
+a struct of multi-byte data to the accelerator from the embedded processor. By
+default, the unsigned integer type in BSV is in big endian, while the
+embedded core stores data in little endian. The motivation for embedded
+processors to use little endian byte ordering is to ensure that the address of a
+variable is unchanged when a typecast is performed. This saves processor cycles,
+and results in improved performance. Little endian variables are automatically
+truncated/extended when an appropriate typecast is made. \\
+
+
+% TODO: Link to:
+% https://github.com/jeffreycassidy/BlueLink/blob/master/Core/Endianness.bsv 
+Within BSV, we make use of the \texttt{LittleEndian.bsv} library provided by the
+open source BlueLink project in order to interpret the processor-written struct
+fields with a little endian encoding.
+
+\begin{figure}[h]
+\centering 
 \scriptsize
-\begin{verbatim}
+\begin{BVerbatim}
 typedef struct {
    LittleEndian#(Bit#(32)) addr;
    LittleEndian#(Bit#(8)) offset;
@@ -1608,18 +1640,11 @@ typedef struct {
    MatUnitPtr ptr_c;
 } MatUnitArgs deriving (Eq, Bits, FShow);
 
-\end{verbatim}
+\end{BVerbatim}
 \normalsize
-
-\subsection{Decoding}
-One of the principal problems encountered between issuing a command containing
-a struct of multi-byte data to the accelerator from the embedded processor. By
-default, the unsigned integer type in BSV is in big endian, while the
-embedded core stores data in little endian. The motivation for embedded
-processors to use little endian byte ordering is to ensure that the address of a
-variable is unchanged when a typecast is performed. This saves processor cycles,
-and results in improved performance. Little endian variables are automatically
-truncated/extended when an appropriate typecast is made.\\
+\caption{Bluespec Verilog structures for our co-processor communication
+  protocol. }
+\end{figure}
 
 We write a C struct into our control region of memory. In order for the data
 within the instructions to be interpreted correctly in hardware, the
@@ -1627,7 +1652,10 @@ byte-ordering needs to be reversed. BSV provides us with a systematic and clean
 way of doing this within hardware. The alternative would be to reverse the bytes
 in software, and therefore lose cycles. \\
 
-\begin{lstlisting}[language=C,style=customc]
+\begin{figure}[h]
+  \centering 
+  \scriptsize
+\begin{lstlisting}[language=C,style=customc,xleftmargin=.3\textwidth]
 struct MatUnitPtr {
   uintptr_t addr;
   uint8_t offset;
@@ -1641,48 +1669,48 @@ struct MatUnitArgs {
   struct MatUnitPtr ptr_c;
 } __attribute__((packed));
 \end{lstlisting}
+  \normalsize
+  \caption{Packed structure in C, corresponding to that of BSV, that is written directly to the
+    control region of our accelerator memory. }
+\end{figure}
 
-% TODO: Link to:
-% https://github.com/jeffreycassidy/BlueLink/blob/master/Core/Endianness.bsv 
 
 % TODO: C padding - citations
 Naturally, C structures are padded and aligned, where N-byte variables are
 aligned to the nearest N-byte block. Variables in a struct are extended in size
-in accordance with these padding and alignment criteria.
+in accordance with this padding and alignment criteria.
 A structure in BSV is unpadded, and as such, it is vital to ensure that the
 structure has no padding within our C code for when it is written to the
 peripheral.
 
 
 \section{Hardware floating point operations}
-\subsection{Fixed/Floating Point}
-We have a decision to implement calculations with rational numbers using either
-fixed-point, or floating-point.
-
-% TODO: Why FP over FixedP 
-
-GCC has built-in support for fixed-point arithmetic.
-
 \subsection{Bluespec Verilog FloatingPoint}
-% TODO: Introduce/explain floating-points in BSV
+We have a decision to implement calculations with rational numbers using either
+fixed-point, or floating-point. While GCC has built-in support for fixed-point
+arithmetic and fixed-point hardware is more simple to implement, we decide to
+implement our accelerator with floating-point arithmetic.
+
 BSV contains a FloatingPoint library. Modules already exist for addition and
 multiplication which are polymorphic, extending the Server interface. The most
 simple is the floating point adder module. The Server interface in Bluespec
 makes use of an internal Put interface for a request, and a Get interface for a
 response.
 
-The floating point modules are paremetised by the precision of our desired floating
+The floating point modules are parametised by the precision of our desired floating
 point format. Naturally, we use the IEEE754 32-bit floating point standard, with a 1-bit sign,
 23-bit significand and 8-bit exponent. We therefore make use of our own
 single-precision floating-point datatype \texttt{FSingle}. For the sake of
 convenience, we also define the datatype for the associated response, containing
 a two element tuple of our result, and an exception.
 
-By making use of the server interface, we can we can put a request containing a
+By making use of the \texttt{Server} interface, we can we can put a request containing a
 3-element tuple of our operands and the appropriate floating point rounding mode
 to our floating point adder. After 6 clock cycles, we obtain a response. A test
 implementation of this is shown below: \\
 
+\begin{figure}[h]
+  \centering 
 \tiny
 \begin{verbatim}
 import GetPut :: *;
@@ -1719,6 +1747,9 @@ endmodule
 // 70: Result: bf800000 (-1.0)
 \end{verbatim}
 \normalsize
+\caption{Example BSV code for a floating point addition testbench and the
+  associated simulation output obtained from a BlueSim simulation.}
+\end{figure}
 
 % TODO: Pipeline --- diagram
 We propose that the pipelined nature of the floating point units offered by the
@@ -1812,11 +1843,12 @@ We then perform reductive pairwise addition of the elements in the buffer.
 The pairwise addition procedure has the advantage that we may fully occupy the
 FP Adder pipeline. We then perform pipelined addition of pairs of elements.
 It should take $\log_2{N}$ reductive steps, where each step consumes
-$6+\frac{N_{i}}{2}$ cycles.
+$6+\frac{N_{i}}{2}$ cycles, where the constant term is the cost of flushing the
+addition pipeline.
 
 \begin{align*}
-  T &= 6\log_2{N} + \left(N + \frac{N}{2} + \frac{N}{4} + ... + 1\right) + \text{const.}\\
-  T &= 6\log_2{N} + 2N + \text{const.}
+  T &= 6\log_2{N} + \left(\frac{N}{2} + \frac{N}{4} + ... + 1\right) + \text{const.}\\
+  T &= 6\log_2{N} + N + \text{const.}
 \end{align*}
 
 The recursive algorithm only works cleanly when the size of our buffer is a
@@ -1833,14 +1865,14 @@ representations.
 
 After each pass, we extract a remainer if it exists, then bitshift $N_i$. At
 most, the binary representation of the number of elements in our input vector is
-the number of binary digits of the size of our buffer $B$. Therefore, there will
-be a maximum of $\log_{2}{B}$ remainder values to place in a seperate buffer and
-accumulate. The accumulation process will therefore take $6\log_{2}{B}$ cycles.
+the number of 1s in the binary representation of our input vector $B$. Therefore, there will
+be a maximum of $\log_{2}{N}$ remainder values to place in a seperate buffer and
+accumulate. The accumulation process will therefore take at most $6\log_{2}{N}$ cycles.
 
 Therefore, the total cycle consumption is:
 \begin{align*}
-  T &= (N) + (6\log_2{N} + 2N) + (6\log_2{B}) + \text{const.} \\
-  T &= 3N + 6(\log_2{N} + \log_2{B})
+  T &= (N) + (6\log_2{N} + N) + (6\log_2{N}) + \text{const.} \\
+  T &= 2N + 12\log_2{N}
 \end{align*}
 
 In this way, we've managed to very substantially reduce the linear constant
@@ -1860,7 +1892,7 @@ constant term.
 \begin{align*}
   T_{\text{FMA}}(N) &= 11N \\
   T_{\text{PMA}}(N) &= 7N + \text{const.}  \\
-  T_{\text{PMPA}}(N) &= 3N + 6(\log_2{N} + \log_2{B}) + \text{const.}
+  T_{\text{PMPA}}(N) &= 2N + 6(\log_2{N} + \log_2{B}) + \text{const.}
 \end{align*}
 
 \subsection{Multiple Functional Units \& Multi-ported memory}
@@ -1881,6 +1913,7 @@ single clock cycle it is only possible to read from two random access locations,
 and write to one location of a RegFile. Thus, we must modify the architecture of
 our memory to support multiple functional units.
 
+\begin{figure}[h]
 \scriptsize
 \begin{verbatim}
  Error: "MultiPortBRAM.bsv", line 18, column 37: (G0002)
@@ -1893,6 +1926,10 @@ our memory to support multiple functional units.
  `pmem_mem_0.sub a__h32127' at "MultiPortBRAM.bsv", line 18, column 37
 \end{verbatim}
 \normalsize
+\caption{BSV compiler error when over 5 random access reads are scheduled to
+  perform in a single clock cycle. A RegFile typically only has 2 read ports.}
+\end{figure}
+
 We observe that the standard BSV RegFile, has a maximum of 5 read ports, and 1
 write port. We exploit the ability to parameterise our modules in BSV, and
 create our own custom MultiPortedMemory module. Our vector of RegFiles will
@@ -1906,20 +1943,22 @@ ports. This is because it contains $n$ channels of RegFile BRAM and can
 distribute its reads to $n-1$ functional units and the AXI bus within a single
 clock cycle appropriately.
 
+\begin{figure}[h]
+  \centering
 \scriptsize
-\begin{verbatim}
-interface MultiPortBRAM#(type addr, type data, numeric type n);
+\begin{BVerbatim}
+interface MultiPortBRAM_IFC#(type addr, type data, numeric type n);
    method Action upd(addr a, data x);
    method ActionValue#(data) sub(Bit#(8) c, addr a);
 endinterface
-module mkMultiPortBRAM(MultiPortBRAM#(addr, data, n))
+module mkMultiPortBRAM#(Integer low, Integer high)(MultiPortBRAM_IFC#(addr, data, n))
 provisos(
    Bits#(addr, addr_sz),
    Bits#(data, data_sz),
-   Bounded#(addr)
+   Literal#(addr)
    );
    // Create N channels of memory
-   Vector#(n, RegFile#(addr, data)) mem <- replicateM(mkRegFileWCF(minBound, maxBound));
+   Vector#(n, RegFile#(addr, data)) mem <- replicateM(mkRegFileWCF(fromInteger(low), fromInteger(high)));
    method Action upd(addr a, data x);
       for(Integer i=0; i<valueOf(n); i=i+1)
          mem[i].upd(a, x); // Update ALL internal memory channels
@@ -1930,9 +1969,12 @@ provisos(
    endmethod
 endmodule
 endpackage
-\end{verbatim}
+\end{BVerbatim}
 \normalsize
-
+\caption{Multi channel BRAM hardware module, parameterised by the number of
+  channels, n, and the low and high allocation indices to determine the internal
+BlockRAM size.}
+\end{figure}
 When we write to our accelerator memory through the AXI4 bus or from one of our
 functional units, we write to all memory channels. A write operation can only be
 performed at one random access memory address per cycle.
@@ -1947,7 +1989,7 @@ possible. Our individual functional units do not use too many RegFile read ports
 % is a conflict between them.
 
 
-\chapter{Matrix Multiplication Peripheral: Evaluation}
+\chapter{Linear Algebra Peripheral: Evaluation}
 \section{Methodology}
 \subsection{Benchmarking \& Counting cycles}
 From the Risc-V specification, we take a look at the mcycles and minstret
@@ -1963,6 +2005,7 @@ or not when the instruction is ran or other factors dependent on how the
 compiler decides to optimise the C firmware when it is compiled into Risc-V
 instructions within machine code.
 
+\begin{figure}[h]
 \begin{lstlisting}[language=C,style=customc]
 #define read_csr_safe(reg) ({ register long __tmp asm("a0");  \
       asm volatile ("csrr %0, " #reg : "=r"(__tmp));          \
@@ -1974,9 +2017,10 @@ void dummy_function() {
   time1 = read_csr_safe(cycle);
   printf("Run cycles: %d\n", time1-time0);
 }
-
 \end{lstlisting}
-
+  \caption{Methodology for determining the number of cycles elapsed from within
+    our bare-metal firmware, making use of the mcycles CSR and inline assembly.}
+\end{figure}
 
 \section{Results}
 \subsection{Functional Unit Type}
@@ -2003,24 +2047,28 @@ values obtained in simulation.
 From our data (Figure \ref{fig:c2_fut}), we observe that the cycle time of our \texttt{PMA} unit is $9N$,
 as opposed to our theoretical prediction of $7N$. This is due to additional overhead in
 switching the FSM of the accelerator after the pipelined multiplications are
-complete. The cycle time of our \texttt{PMPA} unit is $4N$,, with the additional
-overhead arising also due to the switching of our FSM. Lastly our predicted
+complete. The cycle time of our \texttt{PMPA} unit is $4N$ instead of $2N$ for
+the same reason relating to the switching of our FSM. Fortunately, our predicted
 cycle count for our \texttt{FMA} unit of $11N$ is correct.
 
 We observe that our cycle count for our \texttt{PMPA} unit is no longer
 monotonially increasing. Interestingly, the cycle count drops very significantly when our input vector
 size is a power of 2. This is because the cycle overhead of summation of
 remainders for each 1 in the binary representation of the input vector size
-disappears once the size of our input vectors are powers of 2. This overhead is
-significantly smaller than the extra time taken to compute the dot product
-result with an extra element.
+disappears once the size of our input vectors are powers of 2. This overhead
+significantly exceeds the extra time taken to compute the dot product result
+with an extra element, thus explaining why the cycle count decreases.
+
+Alternatively, with more complex logic and conditional checks. Perhaps by
+dummy-writing zero cells in our buffer. We may, in principle, be able to avoid
+the $6\log_2{N}$ overhead associated with accumulating our remainders by appending
+a zero to our pairwise reduced vector whenever it is odd.
 
 Crucially, our \texttt{PMPA} module significantly outperforms the other
 functional units. This can be attributed to the extensive use of pipelining in
 order to perform the computation. Consequently, the hardware maximises the
 amount of computation throughput and occupancy of our floating point units
 multiplier and adder per cycle.
-% TODO: Improve --- parallel x and +
 
 \begin{figure}[h]
   \centering
@@ -2051,6 +2099,14 @@ If we seek to multiply matrices that exceed the size of our internal buffers, we
 must write appropriate firmware to split the computation up, and we run into our
 bottleneck associated with the rate at which we can issue instructions.
 
+We observe that our PMPA and PMA functional units could still be improved.
+Currently, the internal structure of the PMPA and PMA units is that of a finite
+state machine where the units are either performing the multiplication, or the
+addition step. In principle, with additional work and a lot of care to prevent
+rule conflicts and race conditions, it would be possible to extract a further
+speed improvement by performing both of these tasks in parallel, as the addition
+procedure may indeed be started before the multiplication process is complete.
+
 \subsection{Functional Unit Parallelism}
 We make use of the fused multiply-accumulate functional unit for benchmarking
 purposes. This ensures that our individual functional units are saturated, and
@@ -2061,9 +2117,8 @@ result we will need to multiply larger matrices together to obtain the same
 demonstration of this bottleneck.
 
 We seek to benchmark the multiplication of large matrices. We multiply a
-$128\times 4$ and $4\times 128$ matrix with our accelerator.
-
-We copy our matrices from our ROM to our accelerator. We then generate commands
+$128\times 4$ and $4\times 128$ matrix with our accelerator. We copy our
+matrices from our ROM to our accelerator. We then generate commands
 within our firmware and dispatch them to our accelerator. We record the number
 of cycles taken to compute our result within our firmware,
 through using the \texttt{mcycles} CSR, and record the cycle time for our
@@ -2098,8 +2153,6 @@ hardware peripheral to complete the computation within the verilator simulation.
   \label{table:c2_fu_unbuf}
 \end{table}
 
-
-
 From our plots (Figure \ref{fig:c2_fu_unbuf}) we observe that our cycle count
 stops decreasing after 4 functional units are used simultaneously. As a
 consequence, we are not reaching maximum utilisation of our compute resources on
@@ -2107,76 +2160,114 @@ our accelerator. This is because the rate at which we can issue instructions
 becomes a bottleneck.
 
 We observe a $\approx 300$~cycle discrepancy between our cycle counts when the
-operation completes on our accelerator and our firmware. 
+operation completes on our accelerator and our firmware. This is the overhead
+associated with the firmware reading accelerator memory to determine if there
+are available compute resources to issue an additional instruction.
 
 Nevertheless, we do obtain a significant performance improvement. If we pre-load
 our data onto the accelerator, we observe a $4\times$ cycle count improvement
 with 4 functional units when multiplying large matrices. Upon further
-optimisation, it 
-
+optimisation and the use of \texttt{PMPA} units and a more optimised
+communication protocol, we will most certainty obtain superior results. 
 
 \subsection{Synthesis}
-% TODO: POPULATE --- VITAL
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.5\textwidth]{./img/accel_dg.png}
+  \caption{The matrix accelerator attached to the SoC created in Chapter 1 for
+    the purpose of synthesis within Xilinx Vivado.}
+  \label{fig:accel_dg}
+\end{figure}
+
+Care was taken to ensure that the resources of the FPGA would not be exceeded,
+by limiting the total number of functional units to 4, and therefore the memory
+channels to 5. With $64$~KB of memory per functional unit, we would use $320$~KB of FPGA
+BlockRAM. This is almost the entire majority of remaining cells once the CPU ROM
+and RAM has been flashed. Crucially, we reduce the size of our memory regfiles
+to $16$~KB, making our peripheral BlockRAM consumption fall to $80$~KB.
+
+In the process of synthesis we discover one of the disadvantages of
+parameterised hardware design. A very substantial amount of hardware may end up
+being generated when only a single number is changed. Crucially, the abstraction
+introduced results in a decrease of intuition for the 'finite' resource
+allocation of the physical FPGA chip.
+
+We perform synthesis with our peripheral and package it as an IP block using
+Xilinx Vivado. Vivado detects that it is an AXI4 slave interface, and it is
+simple and easy to connect the peripheral to the SoC, as can be seen in Figure
+\ref{fig:accel_dg}.
+
+However, we encounter a crucial disconnect between our open source development
+methodology and the proprietary block design tool. The AXI4 bus interconnect within
+Vivado has a 32-bit data width, whilst the AXI fabric from our simulations has a
+64-bit width. Furthermore, there are discrepancies in the \texttt{ID\_WIDTH}
+property. A degree of additional work and analysis of the specifics of
+generating Xilinx-compatible AXI4 peripherals from Bluespec must be conducted.
 
 \chapter{Commmunication \& Memory Bottleneck: Further Work}
 From our earlier results, we observe that at some threshold, a greater number of
 functional units does not necessarily translate into a greater accelerator
 throughput. 
 
-\section{Protocol efficiency/optimisation}
-One of the most obvious ways of improving the communication rate is to compress
-or improve the communication procotol. One of the ways in which we improve the
-protocol is by packing our strust.
-
-
-% Analysis of struct packing
-% Attribute ((packed))
-% uint8_t offset <-- redundant (-3 bytes)
-% uint8_t unit <-- push to accelerator
-
-% uintptr_t <-- Make ADDR 16 bits!?, subtract base address (64KB accel memory...) ()
-% (-3*2=-6 bytes)
-% 0xC0002900 --> 32 bits
-% 2900 --> 16 bits
-% 1000 (16-bit base address)
-% 1900
-% 6 bytes ~=? 6 cycles saved
-% 2-4 cycles/base address subtraction
-% ALIGN: ACCEL @ 16-bit base address boundary
-% Therefore 0-cost LE typecast <---> address calculation! (SMART)
-
-
-\section{Firmware Command Buffering}
+\section{Command Buffering}
+\subsection{Firmware/Stack}
 To address the issue of not being able to issue commands fast enough, we
 pre-generate all of our commands in the stack such that we don't waste cycles
-generating commands between issuing them.
+generating commands in-between issuing them. For firmware buffering, $20$ bytes of
+memory must be reserved for each instruction issued. It is easy to see that this
+is impractical. If our final matrix is $64\times 64$, we would consume a very
+substantial $80$~KB on the stack for buffering these instructions. We are
+limited both in terms of stack size, and BlockRAM. 
 
-% TODO: Include firmware
-% Stack Instruction Buffering
-
-% TODO: conditions
+% TODO: include firmware
 \begin{table}
   \centering
   \begin{tabular}{r|rr}
     \toprule
     Units & Peripheral & Processor\\
     \midrule
-    0  &     ? & 21500 \\
-    1  & 13366 & 13596 \\
-    2  &  6817 &  7085 \\
-    4  &  3670 &  3954 \\
-    8  &  2621 &  2889 \\
-    12 &  2666 &  2929 \\
-    16 &  2633 &  2916 \\
+    0&?&21383 \\
+    1&14658&15155 \\
+    2&7458& 7957 \\
+    4&4050& 4651 \\
+    8&3855& 4351 \\
+    12&3989& 4520 \\
+    16&3955& 3329 \\
     \bottomrule
   \end{tabular}
-  \caption{Software Buffering: Overhead: Buffer cycles: 723. Copy cycles: 4984}
+  \caption{Cycle count recorded within our hardware and firmware when buffering
+    instructions within firmware. Buffering: Overhead: Buffer cycles: 696. Copy cycles: 4982}
 \end{table}
-% TODO: Evaluation of results: ~10x faster
-% TODO: Explanation of results
 
-% TODO: Jesus...
+We observe very minor performance improvements, but nothing too substantial.
+Whatever performance increase that is incurred may equally be attributed to
+compiler optimisations, as we instruct GCC to optimise our produced machine
+code with the \texttt{-O2} parameter. 
 
+One of the problems with firmware buffering is that the memory wall of issuing
+commands to the accelerator still exists, we still rely on the AXI4 bus latency
+to write to accelerator memory.
+
+\subsection{Hardware}
+Within hardware buffering, we pre-emptively issue commands into an 'instruction'
+region of hardware and set an associated 'program counter' on execution.
+Instructions are then issued each cycle, removing the AXI4 memory bus latency.
+
+We may have seperate regions of preloaded commands, and store only the start
+addresses. As a consequence we need only set the program counter and mark
+execution to perform an entire matrix multiplication.
+
+
+% Very high savings --- best for small matrices, --- 32~ elements
+% TODO: Fix scheduling conflicts.
+
+
+
+
+% TODO: UNKNOWN TIMINGS?:
+% TODO: Cycle count / byte read in IO memory (when bypassing the cache!?)
+% TODO: CACHE R/W speed!?
+We attempt more extreme measures
 % TODO: Accelerator buffer/program counter. (Internal stack)
 
 \section{Firmware Stalling/Interrupts}
@@ -2220,25 +2311,6 @@ interrupt function is called. Crucially, we observe that the associated latency
 of processing interrupts greatly supercedes that of looping and polling a region
 of memory to determine whether an operation within the accelerator has completed.
 
-\section{Hardware Command Buffering}
-                                                                                                                                                              
-One of the problems with firmware buffering is that the memory wall of issuing
-commands to the accelerator still exists. Within hardware buffering, we
-pre-emptively issue commands into an 'instruction' region of hardware and set
-a 'program counter' on execution. 
-
-
-% Very high savings --- best for small matrices, --- 32~ elements
-% TODO: Fix scheduling conflicts.
-
-
-
-\subsection{Rule conflicts, rapid execution}
-
-
-% TODO: UNKNOWN TIMINGS?:
-% TODO: Cycle count / byte read in IO memory (when bypassing the cache!?)
-% TODO: CACHE R/W speed!?
 
 \subsection{Other ideas}
 % TODO: Why did we ignore interrupts. PLIC IS SLOW
@@ -2299,6 +2371,37 @@ func_test address: 80010C98
 Meme!
 \end{verbatim}
 
+\section{Further Work}
+\subsection{Protocol efficiency/optimisation}
+One of the most obvious ways of improving the communication rate is to compress
+or improve the communication procotol. One of the ways in which we improve the
+protocol is by packing our struct. As a consequence, our instruction that is
+issued to the accelerator has fewer bytes, and fewer cycles are required to copy it.
+
+To a degree, it is possible to compress our instructions. The addresses passed
+to the accelerator are 32-bits. It is possible to instead directly provide the
+16-bit offset instead. If we align our accelerator in our memory map
+appropriately, the offset may be inexpensively obtained through a typecast
+(\texttt{0xC0002900 (4B) -> 0x2900 (2B)}). This would reduce the size of our
+instructions by 6 bytes.
+
+% TODO: explain more
+
+% Analysis of struct packing
+% Attribute ((packed))
+% uint8_t offset <-- redundant (-3 bytes)
+% uint8_t unit <-- push to accelerator
+
+% uintptr_t <-- Make ADDR 16 bits!?, subtract base address (64KB accel memory...) ()
+% (-3*2=-6 bytes)
+% 0xC0002900 --> 32 bits
+% 2900 --> 16 bits
+% 1000 (16-bit base address)
+% 1900
+% 6 bytes ~=? 6 cycles saved
+% 2-4 cycles/base address subtraction
+% ALIGN: ACCEL @ 16-bit base address boundary
+% Therefore 0-cost LE typecast <---> address calculation! (SMART)
 \subsection{Memory Striping}
 One of the big problems with our accelerator is the design of the multi-ported
 memory. By duplicating our memory writes across $n$ channels for $n-1$
@@ -2323,13 +2426,64 @@ speed. It would be an interesting exercise to see how this reduction in compute
 speed compares to the savings in BlockRAM.
 
 \chapter{Summary and Conclusions} 
+\section{Summary}
+We have successfully made use of open source resources to synthesise a minimal
+functioning Risc-V SoC. This system acts as a baseline and allows us to rapidly
+prototype and simulate a linear algebra co-processor and develop the associated
+firmware to communicate between the co-processor and a Risc-V core. We achieve
+a significant performance improvement without sacrificing floating point
+accuracy through exploiting the pipelined nature of the floating point Bluespec
+Verilog libraries and designing our own highly pipelined multiplication pairwise
+addition (PMPA) functional unit, which is almost three fold faster than a
+conventional fused-multiply accumulate unit that is used within the floating
+point units of conventional microprocessors. Through designing our own highly
+parametised multi-channel memory module we take advantage of the inherent
+parallelism offered by hardware and demonstrate a further four-fold computation
+speed increase through the use of multiple functional units. We observe that the
+limiting factor preventing further speed-up is the rate at which we can issue
+instructions to our co-processor and we contemplate ways of increasing this.
+
+\section{Conclusions}
+We have verified the feasibility of our design through synthesis and
+demonstrated the advantages through simulations.
+
+
+% BlockRAM limitations
+The design structure of the peripheral makes it simple to add additional
+functionality. The structure may be replaced by a tagged union and different
+operations may be decoded. For instance: if we want to accelerate neural network
+inference, we may pass commands that apply activation functions to large vectors
+of data. By sharing the same region of memory within the peripheral, there is no
+data movement overhead. 
+
+
+
+% TODO: FPGA resources occupancy --- blockRAM saturates quickly (In particular)
+One of the shortcomings associated with the use of Bluespec Verilog observed
+through the project, was that it is more difficult to keep track of the amount
+of FPGA resources used upon synthesis. Due to the duplication of accelerator
+memory across multiple channels and the parameterisation of many modules, small
+changes in configuration or constants may have a impact on generated hardware
+that is not intuitive to the designer despite providing more flexibility.
+
+While we succeeded in performing synthesis with our minimal SoC system, one of
+the principal shortcomings were the problems encountered in performing synthesis
+with our peripheral.
+
+While open source tools were used in the development process and for
+simulations, we must still use the proprietary tools for synthesis.
+
+The proprietary tools 
+
+
 
 % NOTE: Clearly present argument and demonstrate that success criteria were
-% metal
+% met
 % NOTE: Critical thought and interpretation of results
 % NOTE: substantiate claims of success/novelty
 
-% NOTE: Reflect on lessons learnt - 
+% NOTE: Reflect on lessons learnt
+% 'V' not ratified --- comparison would be nice
 
 % Future Work
 % Further work towards Synthesis --- make use of external DDR3 memory

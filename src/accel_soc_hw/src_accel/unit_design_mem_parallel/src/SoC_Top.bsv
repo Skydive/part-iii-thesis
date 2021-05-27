@@ -469,7 +469,7 @@ endmodule
 
 
 (* synthesize *)
-module mkAccel_A (Accel_IFC#(16));
+module mkAccel_A (Accel_IFC#(4));
    let m <- mkAccel;
    return m;
 endmodule

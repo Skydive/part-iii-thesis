@@ -54,7 +54,7 @@ void init_stack() {
 // Overhead (CPC): 4994
 
 
-#define ACCEL_UNITS 8
+#define ACCEL_UNITS 4
 // Unbuffered: Firmware scheduling:
 // (GCC 9.2.0 riscv64-unknown-elf -O2 -fno-inline -march=rv32imafc -mabi=ilp32f)
 // Sequential: ?/21383
@@ -117,7 +117,6 @@ void accel_unbuffered_test() {
 // 4 units:  4050/ 4651
 // 8 units:  3855/ 4351
 // 12 units: 3989/ 4520
-
 // 16 units: 3955/ 3329
 // Overhead (CPC): 4982
 // Overhead (BCC):  696
@@ -258,33 +257,27 @@ void main() {
 
 
   // Need to copy bss and data regions into RAM...
-  printf("RAM: Global Test: %X -> %X\n", &global_test, global_test);
-  size_t gt_ofst = (void*)&global_test - (void*)&_ram_data_start;
-  uint32_t* gt_rom = &_rom_data_start+gt_ofst;
-  printf("ROM: Global Test: %X -> %X\n", gt_rom, *gt_rom);
+  //printf("RAM: Global Test: %X -> %X\n", &global_test, global_test);
+  //size_t gt_ofst = (void*)&global_test - (void*)&_ram_data_start;
+  //uint32_t* gt_rom = &_rom_data_start+gt_ofst;
+  //printf("ROM: Global Test: %X -> %X\n", gt_rom, *gt_rom);
 
-  //accel_unbuffered_test();
-
+  accel_unbuffered_test();
 }
 
 
 extern uint8_t *_bss_start, *_bss_end;
 void initialize_ram() {
   // Clear BSS
+  print("[BOOT] Zeroing BSS\n");
   for (uint32_t *bss_ptr = &_bss_start; bss_ptr < &_bss_end;) {
     *bss_ptr++ = 0;
   }
 
-  /* if (init_values_ptr != data_ptr) { */
-  /*   for (; data_ptr < &_edata;) { */
-  /*     *data_ptr++ = *init_values_ptr++; */
-  /*   } */
-  /* } */
-
   //uintptr_t rom_data_end = (uintptr_t)&_rom_data_start+(size_t)&_ram_data_size;
-  printf("RAM Data: %X -> %X (%X)\n", &_ram_data_start, &_ram_data_end, &_ram_data_size);
-  printf("ROM Data: %X -> %X\n", &_rom_data_start, (uintptr_t)&_rom_data_start+(size_t)&_ram_data_size);
-  print("Copying data region from ROM to RAM...\n");
+  //printf("RAM Data: %X -> %X (%X)\n", &_ram_data_start, &_ram_data_end, &_ram_data_size);
+  //printf("ROM Data: %X -> %X\n", &_rom_data_start, (uintptr_t)&_rom_data_start+(size_t)&_ram_data_size);
+  print("[BOOT] Copying data region from ROM to RAM...\n");
   memcpy((void*)(&_ram_data_start), (void*)&_rom_data_start, (size_t)&_ram_data_size);
-  print("Success\n");
+  print("[BOOT] Success\n");
 }
