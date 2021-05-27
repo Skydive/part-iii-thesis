@@ -35,6 +35,7 @@
 \usepackage{biblatex}
 \addbibresource{bibliography.bib}
 
+\usepackage{hyperref}
 \usepackage{float}
 \usepackage{booktabs}
 \usepackage{amsmath,amssymb}
@@ -95,7 +96,6 @@
 
 \onehalfspacing
 
-
 \chapter{Introduction}
 \pagenumbering{arabic} 
 \setcounter{page}{1} 
@@ -104,26 +104,19 @@
 % NOTE: Contextualise what i'm building
 % NOTE: Analysis of requirements and justified & documented use of tools!
 
-
-% TODO: Qualcomm Hexagon DSP
-
-% TODO: Altera: https://dl.acm.org/doi/10.1145/2847263.2857658
-% https://newsroom.intel.com/wp-content/uploads/sites/11/2018/05/moores-law-electronics.pdf 
-% Incredibly expensive: EUV
-With the end of Moore's law approaching, transistors can no longer be further
+With the end of Moore's law\cite{moore} approaching, transistors can no longer be further
 miniaturised and single-digit nanometre lithography techniques remain incredibly
 expensive. In this environment, it is increasingly common to have accelerators
 within system-on-chips (SoCs), where hardware-level specialisation is vital for
-good performance in compute tasks. Given the recent acquisition of Xilinx by
-AMD, and Altera by Intel in 2015, the dominant microprocessor manufacturers have
-both entered the realm of reprogrammable hardware. It therefore seems
-increasingly likely that an FPGA fabric may be placed within microprocessors for
-creating specialised accelerators, where incremental \textit{hardware updates}
-may be applied to custom processing pipelines. This is of vital importance in
-performance and safety critical systems, such as: self-driving cars.
-Hardware-level vulnerabilities, such as: Spectre and Meltdown, can give a
-malicious adversary a substantial attack surface that would not exist if the
-vulnerable sections of hardware could be reprogrammed appropriately.
+good performance in compute tasks. An example of this would be the Qualcomm
+Hexagon DSP co-processor\cite{QC-Hexagon}, implemented in many smartphones. Given the recent
+acquisition of Xilinx by AMD, and Altera by Intel in 2015\cite{aa-intel-acq}, the dominant
+microprocessor manufacturers have both entered the realm of reprogrammable
+hardware. It therefore seems increasingly likely that an FPGA fabric may be
+placed within microprocessors for creating specialised accelerators, where
+incremental \textit{hardware updates} may be applied to custom processing
+pipelines. This is of vital importance in performance and safety critical
+systems, such as: self-driving cars.
 
 Coupled with the recent massive growth of open-source FPGA tooling, high-level
 hardware design languages, and publically available Risc-V processor designs, it
@@ -131,26 +124,30 @@ has become substantially easier to design, simulate, and deploy a highly
 customised accelerator. Our high-level hardware design languages allow our
 designs to be parameterised, a particularly important feature when designing
 hardware for an embedded device where we have tight silicon area, power and
-thermal constraints.
+thermal constraints. Open source development is particularly good for designing
+embedded systems, where semi-professionals may share, develop, and verify their
+own hardware components.
 
-Linear algebra operations are widely used for machine learning purposes in
-embedded devices. The existing pressures within the sphere of hardware design
-compel us to develop an accelerator for this purpose, where we may make use of
-publically available open source tooling. This provides us with a strong
-foundation to base our work off.
+Linear algebra operations are widely used in embedded devices for machine
+learning, signal processing and other compute tasks. The existing pressures
+within the sphere of hardware design compel us to develop an accelerator for
+this purpose, where we hope to make use of open source code and high-level
+hardware design languages to accelerate the development process.
 
-% TODO: We seek to DISPEL this notion (BlueVec mentions it too)
-% highly customised accelerator is EASY
 Previously, it was thought that SIMD and vector instructions would offer a
 significant enough performance improvement that they would supercede the
-development cost of an accelerator. Crucially, this comes at a cost of
+development cost of an accelerator. We seek to demonstrate that in this open
+source environment, with the aid of publically available code and high-level
+hardware design languages, the development cost of an accelerator has fallen
+substantially. Crucially, vector instructions come at the cost of hardware
 interoperability, where we are constrained to a particular processor model that
-has the ISA extension implemented and therefore a greater silicon area and power
-consumption. An accelerator developed as a processor peripheral may be used
-across different processor types, and ISAs, whilst simultaneously providing a
-superior performance enhancement compared to vector instructions. This provides
-the designer with greater choice and flexibility, particularly important when
-designing an embedded device.
+has the specific ISA extension implemented. It is likely that our highly specialised
+compute task will only make use of a subset of our vector instructions, and
+therefore we waste unnecessary silicon.  An accelerator developed as a processor
+peripheral may be used across different processor types, and ISAs, whilst
+simultaneously providing a superior performance enhancement compared to vector
+instructions This provides the designer with greater choice and flexibility,
+particularly important when designing an embedded device.
 
 \section{Contributions}
 This thesis is split into three main chapters. In the first chapter we perform
@@ -158,11 +155,11 @@ vital prerequisite work to obtain a minimal system to base our later work on.
 We fix latent problems within the floating point unit of the Bluespec Inc.
 Piccolo processor, attach our own proof-of-concept memory mapped peripheral to
 the AXI4 bus, and design Risc-V bare-metal firmware to interface with this
-peripheral. We make use of a modified Verilator testbench to verify the
-correctness of our design and rapidly develop the peripheral. Lastly, we perform
-synthesis, run place \& route algorithms and generate a bitstream to verify the
-feasibility of our design, demonstrating that we can reach clock frequencies of
-10MHz without encountering timing violations.
+peripheral. We make use of a modified Verilator testbench to test our design
+and rapidly develop the peripheral. Lastly, we perform synthesis, run place \&
+route algorithms and generate a bitstream to verify the feasibility of our
+design, demonstrating that we can reach clock frequencies of 10MHz without
+encountering timing violations.
 
 In our second chapter, we elaborate on our design principles and methodology for
 designing our linear algebra accelerator. We implement and benchmark the behaviour
@@ -186,20 +183,18 @@ the traditional HDL computer aided design (CAD) tools (Xilinx/Quartus).
 
 
 \chapter{Background}
-% TODO: Hardware design in general(?)
 \section{Risc-V Instruction Set}
-% TODO: What is an ISA?
 The set of operations a CPU may perform is known as the instruction set
-architecture (ISA). An ISA provides the means for a
-programmer to interface with a processor, allowing software to communicate with
+architecture (ISA). An ISA provides the means for a programmer to interface with
+a processor, effectively allowing software to communicate with existing
 hardware. The ISA also specifies the method of memory addressing, whether
-addresses need to be aligned, and the structure of processor instructions. Most
+addresses need to be aligned, and the format of processor instructions. Most
 desktop computers make use of the x86\_64 ISA, with embedded devices and mobile
-phones commonly using the ARM ISA.
+phones commonly using the ARM ISA\cite{arm-manual}.
 
-Risc-V is an open standard instruction set architecture (ISA). It is provided
+Risc-V\cite{Waterman:EECS-2014-54} is an open standard instruction set architecture (ISA). It is provided
 under open source licenses, where anybody may use the ISA with no restrictions
-over the use of intellectual property (IP). In contrast ARM ISA, which is widely
+over the use of intellectual property (IP). In contrast, the ARM ISA, which is widely
 used in embedded devices, is proprietary. If the ARM ISA is used
 for commercial purposes, the company expects a licencing deal to be made and
 royalties to be paid. Licencing deals typically cost millions of dollars and can
@@ -214,56 +209,31 @@ instruction sets are bloated, needing to maintain necessary backwards
 compatibility --- in many cases a modern ARM CPU will contain redundant
 instructions, and therefore redundant logic and complexity that is unnecessary.
 
-In contrast, the Risc-V ISA is modular, and can be partitioned into various extensions. Of
-notable interest are the 49 (\textbf{I}) 32-bit integer instructions, 11
-(\textbf{A}) atomic instructions, 36 (\textbf{C}) 16-bit compressed instructions, 8
-(\textbf{M}) instructions for integer multiplication and division, and 25
-(\textbf{F}) 32-bit precision floating point instructions. Consequently, a
-functional 32-bit processor for an embedded system with hardware floating point
-support requires only \textbf{129} instructions, with the \textbf{IMAFC}
-extensions. This increases the ease of processor design, and avoids the creation
-of unnecessary and superfluous hardware. 
+In contrast, the Risc-V ISA is modular, and can be partitioned into various
+extensions. Of notable interest are the (\textbf{I}) integer instructions,
+(\textbf{A}) atomic instructions, (\textbf{C}) compressed instructions,
+(\textbf{M}) instructions for integer multiplication and division, and
+(\textbf{F}) floating point instructions. Consequently, a functional 32-bit
+processor for an embedded system with hardware floating point support requires
+only \textbf{129} instructions, with the \textbf{IMAFC} extensions. This
+increases the ease of processor design, and avoids the creation of unnecessary
+and superfluous hardware.
 
 % A - 11 (atomic instructions)
 % C - 36 (compressed 16-bit instructions)
 % RV32I - 49 (32-bit integers)
 % M - 8 (integer x and /)
 % F - 25 (32-bit floating point instructions)
-
-Since the publication of the Risc-V ISA\cite{Waterman:EECS-2014-54}, a variety of different open source
-processors have been designed. The source code of these processors is publically
-available, with a range of different designs available on GitHub. Collaboration
-and open source processor design has a range of additional benefits in hardware
-security. This is of particular relevance in the light of severe hardware-level
-vulnerabilities found in the majority of ARM and x86\_64 processors in
-production, namely Spectre, and Meltdown. With processor designers and
-manufacturers paying less attention to verifying the security of their devices
-whilst competing with each other to maximise processor throughput, the design of
-processors is not subject to enough scrutiny within the development process.
-Open source processor development provides the opportunity for processor designs
-to be verified by a community of different organisations, reducing the
-likelihood that architectural level attacks can be performed. By basing our work
-on an open source processor in the development of our peripheral, we benefit
-substantially from these security considerations.
-
-Moreover, when designing a peripheral, it is vital to possess an understanding
-of the processor that it is connected to. Using an open source processor gives
-us greater freedom, allowing us to pry into the internals, and analyse the
-specifics of processor behaviour if things behave in an unexpected manner.
-
 \section{Simulating Hardware} 
 The fastest way to test and verify the design of hardware is through simulations.
 Creating a silicon application-specific integrated circuit (ASIC) remains an
-incredibly costly and time consuming process.
-There is no room for rapid prototyping, and hundreds of thousands of units need
-to be created and sold at a profit for the process to be economically
-feasible. Fabricating a microprocessor at each stage in its development process
-for testing purposes is too expensive. As a consequence, there is very
-limited room for fabricating an integrated circuit for testing purposes in
-industry, and almost no room for fabrication in academic circles.
+incredibly costly and time consuming process. There is no room for rapid
+prototyping, and hundreds of thousands of units need to be created and sold at a
+profit for the process to be economically feasible. As a consequence, there is
+very limited room for fabricating an integrated circuit for prototyping purposes.
 
 \subsection{Verilator}
-Verilator is a piece of open source software that compiles Verilog into C++. A
+Verilator\cite{dg-verilator} is a piece of open source software that compiles Verilog into C++. A
 testbench can then be created, where the generated C++ class representing the
 top-level module in hardware, can be stepped forwards in time with the clock
 toggled from low to high accordingly, and signals propagated through simulated
@@ -356,14 +326,13 @@ and the bitstream is generated.
 
 \subsubsection{Symbiflow}
 % Symbiflow - the future. (Find paper) 
-% TODO: Cite: https://ieeexplore.ieee.org/document/9103284
 The tools required for synthesis are closed source and proprietary, requiring
 licenses for use in commercial purposes. Both Xilinx and Altera, the major FPGA
 vendors, employ a greater number of software engineers than hardware engineers
 within their FPGA divisions to develop their complex closed-source proprietary
 software for synthesis.
 
-The Symbiflow project is an open-source computer aided design (CAD) flow used to
+The Symbiflow project\cite{symbiflow} is an open-source computer aided design (CAD) flow used to
 program commercial FPGAs. The proprietary bitstream format for the Xilinx
 Arty-A7 has been fully reverse engineered.
 The Symbiflow project is capable of performing synthesis, placement, routing
@@ -459,7 +428,7 @@ of the hardware changes, by looking at an \texttt{always\_comb} block.
 
 Due to the difficulties concerning development time, and for purposes of
 efficiency, more expressive hardware design languages have been created, namely,
-ChiselHDL and Bluespec Verilog. These are explained more thoroughly in later chapters.
+ChiselHDL\cite{chisel} and Bluespec Verilog\cite{bluespec}.
 
 % The Risc-V Rocket processor is designed in
 % ChiselHDL, whilst the Risc-V Piccolo, Flute and TOOOBA processors are written in
@@ -474,10 +443,8 @@ ChiselHDL and Bluespec Verilog. These are explained more thoroughly in later cha
 % computations to different hardware units, and make extensive use of pipelining
 % for greater concurrency in our floating point computations. We later discuss the
 % Rocket and Piccolo processors written about in a later section.
-% % TODO: Cite https://dl.acm.org/doi/abs/10.1109/MEMCOD.2004.1459818 
 
 
-% TODO: Cite https://people.eecs.berkeley.edu/~krste/papers/chisel-dac2012.pdf 
 % \subsection{ChiselHDL \& Bluespec Verilog}
 % Chisel (Constructing Hardware In a Scala Embedded Language), is a new
 % programming language for hardware design that is based on Scala, that is
@@ -510,8 +477,7 @@ ChiselHDL and Bluespec Verilog. These are explained more thoroughly in later cha
 
 \chapter{Related Work} 
 \section{BlueVec}
-% TODO: Cite https://www.cl.cam.ac.uk/~swm11/papers/FPL2013-BlueVec.pdf
-The BlueVec co-processor is a vector processor aimed at accelerating neural
+The BlueVec\cite{bluevec} co-processor is a vector processor aimed at accelerating neural
 network inference designed to address the computation botleneck of the problem
 of the \emph{memory wall}.
 The memory wall refers to the growing discrepancy between memory bandwidth and
@@ -538,17 +504,17 @@ proprietary embedded design suite (EDS), where it is possible to compile C/C++
 software targetting the Nios RISC architecture, and making use of the custom
 instructions that are implemented in hardware.
 
-The ability to add custom instructions to the Nios processor provides one with
-sufficient versatility to fine tune the designed hardware to perform specific
-tasks very efficiently, making use of the parallellisation-based strengths of
-designing things in hardware.
+% The ability to add custom instructions to the Nios processor provides one with
+% sufficient versatility to fine tune the designed hardware to perform specific
+% tasks very efficiently, making use of the parallellisation-based strengths of
+% designing things in hardware.
 
-One of the key ways in which the BlueVec processor tackles the problem of the
-memory wall is by ensuring that memory is written to and read from in a
-streamlined fashion. Vectorised data is stored in contiguous arrays within
-memory, and the BlueVec co-processor highlights that it makes efficient use of
-external memory bandwidth through the use of burst memory access to stream data
-from external memory at a very high rate.
+% One of the key ways in which the BlueVec processor tackles the problem of the
+% memory wall is by ensuring that memory is written to and read from in a
+% streamlined fashion. Vectorised data is stored in contiguous arrays within
+% memory, and the BlueVec co-processor highlights that it makes efficient use of
+% external memory bandwidth through the use of burst memory access to stream data
+% from external memory at a very high rate.
 
 % TODO: Lane-local memories / Pipelining
 % Each thread has its own LANE. --- Similar to multi-channel memory.
@@ -579,11 +545,11 @@ processor to be moved onto a different platform.
 % TODO: Reliability considerations - vendor black boxes. Bugs (if found) -
 % impossible to correct. (Another section!?)
 
-Furthermore, we highlight the loss of interopability. We are constrained to the
+Furthermore, we highlight the loss of interoperability. We are constrained to the
 Nios instruction set. There is no way for an ARM, MIPS, Risc-V, or x86\_64 based
 system to interface with, and make use of the vector co-processor. With the
 growth of ARM processors used in embedded devices, and the recent emergence of
-Risc-V, this lack of interopability is a costly downside to the performance
+Risc-V, this lack of interoperability is a costly downside to the performance
 improvements demonstrated by BlueVec for vector processing.
 
 % TODO: Comment on Benchmarks
@@ -592,7 +558,7 @@ improvements demonstrated by BlueVec for vector processing.
 
 % NOTE: BlueVec - Literature Review
 % NOTE: General argument --- elaborate upon motivations
-% NOTE: BlueVec --- Nios. Custom instructions ---> Loss of interopability
+% NOTE: BlueVec --- Nios. Custom instructions ---> Loss of interoperability
 % NOTE: Are there truly multiple functional units? Instructions STALL the cpu.
 % NOTE: Unadjustable silicon consumption --- less control!
 
@@ -624,7 +590,7 @@ registers of data (Single Instruction Multiple Data). We therefore save
 processor cycles through a technique known as DLP (Data level parallelism),
 where fewer processor instructions are required in order to perform the same
 mathematical operation. High-performance desktop and server systems that use the
-\texttt{x86\_64} ISA have the AVX-512 and SSE instruction set extension for
+\texttt{x86\_64} ISA have the AVX-512 and SSE instruction set extensions\cite{x86-simd} for
 vector processing, while the ARM ISA has the Neon extension for vector
 processing on mobile devices.
 
@@ -636,7 +602,7 @@ extension specifies the existence of vector registers which may be some power of
 may then be simultaneously applied to groups of numbers loaded in these vector
 registers.
 
-Crucially, the Risc-V vector extension has not yet been ratified. As such, its
+Crucially, the Risc-V vector extension\cite{riscv-v-spec} has not yet been ratified. As such, its
 features may change, and it is unwise to implement the instructions as the ISA
 may undergo breaking changes. Ratification is a time consuming process. The
 Risc-V foundation needs to be certain that the definition of the ISA extension
@@ -651,13 +617,34 @@ deal of silicon space. Even if the ISA is implemented, compilers do not yet
 support producing vector instructions in generated machine code.
 
 \section{Open Source Cores}
+Since the publication of the Risc-V ISA, a variety of different open source
+processors have been designed such as: Rocket\cite{rocket}, or
+Piccolo\cite{piccolo}. The source code of these processors is publically
+available on GitHub. Collaboration and open source processor design has benefits
+in hardware security. This is of particular relevance in the light of the severe
+hardware-level speculative execution vulnerabilities found in the majority of
+ARM and x86\_64 processors in production, namely Spectre\cite{spectre}, and
+Meltdown\cite{meltdown}. With processor designers and manufacturers paying less
+attention to verifying the security of their hardware whilst competing with each
+other to maximise processor performance, the design of processors is not subject
+to enough scrutiny within the development process. Open source processor
+development provides the opportunity for processor designs to be verified by a
+community of different organisations, increasing the likelihood that
+architectural level attacks can be spotted and averted.
+
+Moreover, when designing a peripheral, it is vital to possess an understanding
+of the processor that it is connected to. Using an open source processor gives
+us greater freedom, allowing us to pry into the internals and analyse the
+specifics of processor behaviour if things behave in an unexpected manner.
+
 Since we seek to minimise the use of proprietary, and closed-source libraries,
 we avoid using proprietary soft-cores. Notably, Xilinx has its Microblaze
 processor, while Altera has its Nios II cores. We may base our accelerator on
 one of these, but we are immediately locked into either the Xilinx or Altera
-proprietary hardware development (CAD) ecosystems. It is not even possible to
+proprietary hardware development (CAD) ecosystems. It is not possible to
 simulate an SoC of one of these processors attached to our peripheral without
 their proprietary tooling.
+
 Moreover, the proprietary simulation tools offer similar or worse performance
 compared to Verilator. Verilator provides us with less-overhead and greater
 freedom within our simulations, giving us direct control to our testbench with
@@ -665,47 +652,44 @@ C++. In contrast, the proprietary xsim, and modelsim have an associated overhead
 of generating a clock and initialising our memory using the bloated the clunky
 proprietary CAD tools to simulate our SoC.
 
-\subsection{Rocket \& RoCC}
-% TODO: talk about Rocket
-% TODO: Cite Rocket Chip Generator:https://www2.eecs.berkeley.edu/Pubs/TechRpts/2016/EECS-2016-17.pdf 
-The Rocket processor is written in ChiselHDL. It is packed with a utility known
-as the Rocket Chip Generator, which generates an SoC consisting of the Rocket
-CPU and the necessary peripherals required for a functioning system. 
+% \subsection{Rocket \& RoCC}
+% The Rocket\cite{rocket} processor is written in ChiselHDL\cite{chisel}. It is
+% packed with a utility known as the Rocket Chip Generator, which generates an SoC
+% consisting of the Rocket CPU and the necessary peripherals required for a
+% functioning system.
 
-% TODO: Elaborate: Freedom means physical + commercial use has been demonstrated
-% The Freedom E310 is a Risc-V SoC designed by the company SiFive, the Risc-V ASIC
-% SoC designed by SiFive is 
+% % TODO: Elaborate: Freedom means physical + commercial use has been demonstrated
+% % The Freedom E310 is a Risc-V SoC designed by the company SiFive, the Risc-V ASIC
+% % SoC designed by SiFive is 
 
-The Rocket processor has the Rocket Custom Co-processor (RoCC) interface. This
-allows an accelerator to be implemented through the use of custom instructions.
-By having the hardware of the processor itself fetch and execute instructions as
-opposed to a firmware and memory-mapped approach, the RoCC system saves
-processor cycles. This is accomplished by eliminating the associated overhead of
-reading/writing from memory via an AXI4 bus.
+% The Rocket processor has the Rocket Custom Co-processor (RoCC) interface. This
+% allows an accelerator to be implemented through the use of custom instructions.
+% By having the hardware of the processor itself fetch and execute instructions as
+% opposed to a firmware and memory-mapped approach, the RoCC system saves
+% processor cycles. This is accomplished by eliminating the associated overhead of
+% reading/writing from memory via an AXI4 bus.
 
-% TODO: verify this claim
-One of the principal disadvantages of the RoCC is its tight coupling to the CPU.
-The RoCC constrains us to using the Rocket processor in particular, and alters
-the processor's decode and execution units. Because of instruction set
-dependency, we are constrained to Risc-V processors, and therefore making
-sacrifices in terms of interoperability. 
+% % TODO: verify this claim
+% One of the principal disadvantages of the RoCC is its tight coupling to the CPU.
+% The RoCC constrains us to using the Rocket processor in particular, and alters
+% the processor's decode and execution units. Because of instruction set
+% dependency, we are constrained to Risc-V processors, and therefore making
+% sacrifices in terms of interoperability. 
 
-Further arguments may be made in terms of silicon complexity. Communicating with
-an accelerator through an AXI4 bus allows the silicon of the accelerator to be
-physically separated from the CPU. This provides us with greater benefits in
-terms of heat dissipation in the circumstance that an ASIC is created.
+% Further arguments may be made in terms of silicon complexity. Communicating with
+% an accelerator through an AXI4 bus allows the silicon of the accelerator to be
+% physically separated from the CPU. This provides us with greater benefits in
+% terms of heat dissipation in the circumstance that an ASIC is created.
 
-One of the key disadvantages of ChiselHDL is that it does not offer the same
-degree of scheduling abstraction that exists with BSV. While Scala gives us the
-ability to generate arbitrary and parameterised hardware, it does not provide
-the benefits of designing hardware which executes atomic rules and the
-processing/execution of complex dependency tree.
+% One of the key disadvantages of ChiselHDL is that it does not offer the same
+% degree of scheduling abstraction that exists with BSV. While Scala gives us the
+% ability to generate arbitrary and parameterised hardware, it does not provide
+% the benefits of designing hardware which executes atomic rules and the
+% processing/execution of complex dependency tree.
 
 \subsection{Bluespec Risc-V CPUs}
-% TODO: MIT TOOOBA project
-% TODO: Cite paper
 The Bluespec designed processors take full advantage of the modular nature of
-processor design that is made possible through the use of Bluespec Verilog.
+processor design that is made possible through the use of Bluespec Verilog\cite{bluespec}.
 Seperate processor ISA extensions, the processor register width, and the AXI4
 bus size may be set appropriately on compilation of the BSV code into Verilog
 RTL. The ability of BSV to support atomic rules, and specify complex scheduling
@@ -715,7 +699,7 @@ Bluespec Inc. has created three example processors. The Piccolo processor
 consists of a 3-stage in-order pipeline, and is designed primarily for small
 embedded systems. The Flute processor contains a 5-stage in-order pipeline, and
 contains an MMU, allowing it to support virtual memory and boot a linux OS.
-The TOOOBA processor, based on the MIT Riscy-OOO, has a superscalar architecture
+The TOOOBA processor, based on the MIT Riscy-OOO\cite{riscy-ooo}, has a superscalar architecture
 and supports out-of-order execution.
 
 All of these designed processors have the advantage of providing an example
@@ -748,8 +732,8 @@ and standard Verilog. The creation of hardware that performs more complex tasks
 is therefore made significantly easier. As such, we decide to use the Piccolo
 processor from the Bluespec Inc. family within our simulation and testbench.
 
-We choose the Piccolo processor over the Flute processor since we have no need
-for virtual memory, therefore an MMU is superfluous. While the Toooba processor
+We choose the Piccolo\cite{piccolo} processor over the Flute\cite{flute} processor since we have no need
+for virtual memory, therefore an MMU is superfluous. While the Toooba\cite{toooba} processor
 would offer superior performance, due to its inherent complexity it would
 consume far too much silicon space for the purpose of synthesis. We seek to
 minimise our silicon area to open up the opportunity for the later task of
@@ -768,9 +752,11 @@ have greater FPGA resources to make use of.
 \section{Risc-V Firmware}
 \subsection{Risc-V Assembly \& Firmware Structure}
 In order to compile C and assembly language into machine code for our bare-metal
-firmware, we make use of the GNU compiler collection (GCC). Crucially, our
-firmware is not an operating system, we must therefore perform a substantial
-setup procedure before executing our own code.
+firmware, we make use of the GNU compiler collection (GCC) rather than
+LLVM\cite{riscv-gcc-vs-llvm}. Crucially, our firmware is not an operating
+system, we must therefore perform a substantial setup procedure before executing
+our own code.
+
 
 % The naming convention for compilers is \texttt{arch-vendor-os-libc-gcc}. The
 % standard, desktop version of gcc \texttt{x86\_64-pc-linux-gnu-gcc} is not
@@ -803,10 +789,9 @@ Crucially, the UART peripheral provided by Bluespec Inc. is only suitable for
 simulation purposes. Data written into its transmit register are printed
 directly to console. 
 
-% TODO: Cite Linker File guide
 \subsubsection{Linker File}
 Since we are compiling our C into a bare-metal ELF, we must specify the layout
-of the machine code within the binary using a linker file.
+of the machine code within the binary using a linker file\cite{linker-blog}.
 It is vital to consider the distinction between load memory address (LMA) and
 virtual memory address (VMA). The LMA is the location of our section in our
 binary, while the VMA is the location
@@ -911,12 +896,12 @@ Section .stack          : addr         80800c34 to addr         80804c40; size 0
     have a $16$~KB stack.}
 \end{figure}
 
-One of the first problems encountered was a CPU trap due to a stack overflow.
-The size of the stack may be modified in the linker file. The \texttt{embeddedartistry}
-printf implementation that avoids using heap memory stores a considerable amount
-of data on the stack. As such, we set the stack to $16$~KB, rather than the
-original $4$~KB. A larger stack reduces the likelihood of a stack overflow,
-particularly if our libraries used are dependent on a lot of stack allocations.
+% One of the first problems encountered was a CPU trap due to a stack overflow.
+% The size of the stack may be modified in the linker file. The \texttt{embeddedartistry}
+% printf implementation that avoids using heap memory stores a considerable amount
+% of data on the stack. As such, we set the stack to $16$~KB. A larger stack
+% reduces the likelihood of a stack overflow, particularly if our libraries used
+% are dependent on a lot of stack allocations.
 
 \subsubsection{LibC \& printf}
 The standard printf function defined within the \texttt{stdio.h} header will
@@ -927,14 +912,14 @@ corresponding to the print function included within your final ELF file.
 The standard printf function makes use of heap memory. Due to memory
 constraints, the location of the heap is not specified within the linker file.
 We therefore seek an implementation of the printf function that relies only on
-the stack. 
-% TODO: Cite https://github.com/embeddedartistry/printf
+the stack. We use the embeddedartistry \cite{ea-printf} implementation.
 
 \subsubsection{crt.s --- RiscV Assembly}
 The initial location of our program counter after it is moved from the boot rom
 is \texttt{0x80000000}. This is the start address of our RAM. For
 instruction-level control over CPU behaviour on boot, we place our own section
-of assembly code at the beginning of RAM.
+of assembly code at the beginning of RAM. We base our assembly boot behavior on
+that of the firmware created for the VexRiscV \cite{vexriscv} processor.
 
 Of notable importance is setting the stack pointer \texttt{sp}, to ensure that
 stack memory is allocated in the correct region of memory. We also set the
@@ -968,17 +953,16 @@ infinitLoop:
 
 \end{lstlisting}
 \lstset{}
-\caption{Boot initialisation}
+\caption{Risc-V assembly instructions for the fimware setup/boot process}
 \end{figure}
 
 \section{Testbench Setup}
 \subsection{Debugging Piccolo: FPU}
 \subsubsection{Fixing Piccolo FPU typeerrors}
-% TODO: hyperlink: https://github.com/bluespec/Piccolo/tree/a4e34ef2f2ba4e82a95faa2bbe3dd832ca3c51a0 
-The latest commit of the Piccolo processor, at the time of development, (a4e34ef), had
-a type error in the floating point unit (FPU). 
-
-The compiler experiences ambiguity between the RoundMode enumerations declared
+% TODO: hyperlink:  
+The latest commit of the Piccolo processor, at the time of development,
+(\href{https://github.com/bluespec/Piccolo/tree/a4e34ef2f2ba4e82a95faa2bbe3dd832ca3c51a0}{a4e34ef}),
+had a type error in the floating point unit (FPU). The compiler experiences ambiguity between the RoundMode enumerations declared
 within the BSV FloatingPoint library (\texttt{FloatingPoint.bsv}), and the
 enumeration within \texttt{ISA\_Decls}. We hypothesise that a previous version
 of the Bluespec Verilog compiler was capable of either resolving this ambiguity
@@ -1008,7 +992,7 @@ The return type according to the use:
       Tuple2#(FloatingPoint::FloatingPoint#(d__, e__), FloatingPoint::Exception)))
 \end{verbatim}
 \normalsize
-\caption{Bluespec Inc. Piccolo processor, floating point ISA extension compiler errors.}
+\caption{Bluespec Inc. Piccolo processor: floating point ISA extension compiler errors.}
 \end{figure}
 
 In order to successfully compile the Piccolo processor with floating point
@@ -1122,13 +1106,15 @@ our case, the fs bit is found to be disabled.
 Compared to debugging standard Verilog, the structure of Bluespec Verilog
 provides us with a greater ability to debug, and identify relevant codepaths.
 
-We further observe that all FP ALU functions check the fs bit of the CSR register.
-This can be seen from the ALU fv\_LD function that runs when the flw instruction
-is executed. We later learn, that this is an intentional design descision as per
-the Risc-V specification, Chapter 3, Section 1.11. The fs bit on the mstatus CSR must be
-set in order for floating-point instructions to be enabled. We can see how this
-is done in bare-metal C, by looking at the source code for the Spike Risc-V
-proxy kernel, we implement the relevant parts of this code within our firmware
+We further observe that all FP ALU functions check the fs bit of the control
+status register (CSR).
+This can be seen from the ALU \texttt{fv\_LD} function that runs when the
+\texttt{flw} instruction is executed. We later learn, that this is an intentional design descision,
+mentioned obscurely, as per the privileged Risc-V
+specification\cite{Waterman:EECS-2016-161} (Chapter 3.1.10). The fs bit on the
+\texttt{mstatus} CSR must be set in order for floating-point instructions to be
+enabled. We can see how this is done in bare-metal C, by looking at the source
+code for the Spike\cite{spike} Risc-V proxy kernel, we implement the relevant parts of this code within our firmware
 initialisation sequence. Once implemented, we observe that floating point
 instructions operate correctly.
 % https://github.com/riscv/riscv-pk/blob/master/machine/minit.c
@@ -1172,7 +1158,7 @@ region of memory where 4-byte integers can be read/written from.
 
 \subsubsection{What is AXI4?}
 A microprocessor communicates with memory and other peripherals through a bus.
-The AXI4 bus protocol is designed by ARM, and is royalty-free, where a licence
+The AXI4 bus protocol\cite{axi4:wiki} is designed by ARM, and is royalty-free, where a licence
 is not required for academic or commercial use.
 
 % https://forums.xilinx.com/t5/Design-and-Debug-Techniques-Blog/AXI-Basics-1-Introduction-to-AXI/ba-p/1053914 
@@ -1218,31 +1204,30 @@ and also when attaching the peripheral to the AXI4 bus interconnect.
 \end{figure}
 
 
-Proprietary CAD tools, such as Xilinx Vivado, typically have a built-in block
-design tool. The built in design tool allows the developer to see the SoC as a
-whole, and visually connect components together. These design tools generate the
-necessary Verilog HDL representing the SoC and the necessary connections between
-the module components.
+% Proprietary CAD tools, such as Xilinx Vivado, typically have a built-in block
+% design tool. The built in design tool allows the developer to see the SoC as a
+% whole, and visually connect components together. These design tools generate the
+% necessary Verilog HDL representing the SoC and the necessary connections between
+% the module components.
 
-Our SoC can be created by creating the necessary IP blocks for our accelerator,
-and processor, and making use of the proprietary AXI interconnect, UART module
-and block memory controller. The block design tools created by Xilinx and Altera
-are a solution to the mess of specifying wires and connections when writing
-standard Verilog HDL in a modular fashion. The design may be then simulated
-directly using the xsim command within Xilinx Vivado.
+% Our SoC can be created by creating the necessary IP blocks for our accelerator,
+% and processor, and making use of the proprietary AXI interconnect, UART module
+% and block memory controller. The block design tools created by Xilinx and Altera
+% are a solution to the mess of specifying wires and connections when writing
+% standard Verilog HDL in a modular fashion. The design may be then simulated
+% directly using the xsim command within Xilinx Vivado.
 
-In contrast, our testbench SoC written in Bluespec Verilog has no graphical
-configuration. The entire network consisting of the processor core, peripherals
-and AXI4 interconnect fabric are all written in BSV, and the modules are
-connected together manually. This process is significantly simpler than with
-Verilog RTL, as the overloaded module/typeclass \texttt{mkConnection} can be used to
-forward arbitrary structures of data between modules of particular interfaces.
+Our testbench SoC written in Bluespec Verilog has no visual block editor, like
+with CAD tools such as Xilin Vivado. The entire network consisting of the
+processor core, peripherals and AXI4 interconnect fabric are all written in BSV,
+and the modules are connected together manually. This process is significantly
+simpler than with Verilog RTL, as the overloaded module/typeclass
+\texttt{mkConnection} can be used to forward arbitrary structures of data
+between modules of particular interfaces.
+
 An instance of \texttt{mkConnection} exists for the AXI4 master and slave
-interfaces that are also implemented in BSV themselves. The AXI4 fabric module
-is the interconnect, and is parametised by the number of master and slave
-interfaces it should have. Each instance of \texttt{mkConnection} is a module
-that forwards data between all 35 AXI4 wires.
-\clearpage
+interfaces that are also implemented in BSV themselves. Each instance of
+\texttt{mkConnection} is a module that forwards data between all 35 AXI4 wires.
 
 \subsubsection{AXI4 Alignment/Padding}
 Due to the structure of the AXI4 bus and the way a processor writes to memory,
@@ -1420,25 +1405,21 @@ demonstrated a functioning testbench, we proceed to the synthesis stage.
     synthesis, containing GPIO, UART, RAM and ROM memory-mapped peripherals.}
 \end{figure}
 
-While it is technically possible to synthesise a design using the Symbiflow
-toolchain on an Arty A7-100T, this particular model has a very significant
-number of LUTs and the open source place and route algorithm is slower and less
-optimised than the proprietary one in Xilinx Vivado. Additionally, Vivado
-provides us with more detailed information about timing violations and a place
-and route diagram revealing the structure of the hardware to us in a visual
-manner. This is invaluable, and is on balance why we decide to avoid using the open
-source toolchain for the purpose of synthesis.  
+We synthesise, place \& route and generate a bitstream of a minimal SoC using
+Xilinx Vivado. Additionally, Vivado provides us with more detailed information
+about timing violations and a place and route diagram revealing the structure of
+the hardware to us in a visual manner. This is invaluable, and is on balance why
+we decide to avoid using the open source Symbiflow toolchain for the purpose of
+synthesis.
 
 We reconstruct our SoC using the block design tool within Vivado Studio. We use
-the \texttt{SSITH\_P1} core provided by the repository. While it does not have
-an FPU, it may be easily rebuilt to include one along with the Risc-V based
-\textbf{F} ISA extension.
+the \texttt{SSITH\_P1} core provided by the repository.
 
 We perform a place and route (P\&R) procedure, to reveal the LUT occupancy and verify
 that the design passes timing checks at a 10 MHz clock rate. We generate an \texttt{.mml}
 file containing the information of our ROM cells from the P\&R process and
-proceed to generate a bitstream where we have initialised the RAM appropriately
-in order to flash our FPGA.
+proceed to generate a bitstream where we have initialised the appropriate ram
+cells with our firmware for flashing our FPGA.
 
 From our diagram/table of FPGA occupancy (Figure \ref{fig:soc_pr}/Table
 \ref{table:soc_pr}), we see that the majority of space on our FPGA is
@@ -1468,19 +1449,18 @@ free. This is ample room for synthesis of an external accelerator.
 With a successful P\&R at 10MHz, with no timing violations, we have a clock rate
 increase of 400-fold compared to our simulations at 24kHz.
 
-The most pronounced timing violation constraining our clock rate to 10MHz as
-opposed to 100MHz is due to the sparsity of our BlockRAM. We can see that our
-orange ROM modules (orange highlights on red rectangles), are distributed quite
-sparsely. Our system clock \texttt{(sys\_clk)} originates at the very centre of
-our chip, and the signal needs to propagate to greater distance to clock the
-sparse ROM. This becomes an issue at clock frequencies that exceed 10MHz, or if
-our firmware grows in size substantially, such that we need more ROM modules
-that may be distributed even more sparsely and further away from the system clock.
+The most pronounced timing violation constrains our clock rate to 10MHz as
+opposed to maximum of 100MHz is due to the sparsity of our BlockRAM. We can see
+that our orange ROM modules (orange highlights on red rectangles), are
+distributed quite sparsely. Our system clock \texttt{(sys\_clk)} originates at
+the very centre of our chip, and the signal needs to propagate to greater
+distance to clock the sparse ROM. This becomes an issue at clock frequencies
+that exceed 10MHz.
 
-Now that we have verified our SoC design through simulations, synthesis, place
-\& route and bitstream generation targetting a Xilinx Arty A7-100T, we may build
-upon our minimal functioning self-contained SoC to construct our own linear
-algebra peripheral.
+Now that we have demonstrated the feasibility our SoC design through
+simulations, synthesis, place \& route and bitstream generation targetting a
+Xilinx Arty A7-100T, we may build upon our minimal functioning self-contained
+SoC to construct our own linear algebra peripheral.
 
 \begin{figure}[h]
   \centering
@@ -1602,9 +1582,8 @@ truncated/extended when an appropriate typecast is made. \\
 
 
 % TODO: Link to:
-% https://github.com/jeffreycassidy/BlueLink/blob/master/Core/Endianness.bsv 
-Within BSV, we make use of the \texttt{LittleEndian.bsv} library provided by the
-open source BlueLink project in order to interpret the processor-written struct
+Within BSV, we make use of the \href{https://github.com/jeffreycassidy/BlueLink/blob/master/Core/Endianness.bsv}{\texttt{Endianness.bsv}} library provided by the
+open source BlueLink\cite{bluelink} project in order to interpret the processor-written struct
 fields with a little endian encoding.
 
 \begin{figure}[h]
@@ -1663,11 +1642,9 @@ struct MatUnitArgs {
 % TODO: C padding - citations
 Naturally, C structures are padded and aligned, where N-byte variables are
 aligned to the nearest N-byte block. Variables in a struct are extended in size
-in accordance with this padding and alignment criteria.
-A structure in BSV is unpadded, and as such, it is vital to ensure that the
-structure has no padding within our C code for when it is written to the
-peripheral.
-
+in accordance with this padding and alignment criteria. A structure in BSV is
+unpadded, and as such, it is vital to ensure that the structure has no padding
+within our C code for when it is written to the peripheral.
 
 \section{Hardware floating point operations}
 \subsection{Bluespec Verilog FloatingPoint}
@@ -2189,87 +2166,86 @@ Vivado has a 32-bit data width, whilst the AXI fabric from our simulations has a
 property. A degree of additional work and analysis of the specifics of
 generating Xilinx-compatible AXI4 peripherals from Bluespec must be conducted.
 
-\chapter{Commmunication \& Memory Bottleneck: Further Work}
+\chapter{Communication Bottleneck: Further Work}
 From our earlier results, we observe that at some threshold, a greater number of
 functional units does not necessarily translate into a greater accelerator
 throughput. 
 
 \section{Command Buffering}
-\subsection{Firmware/Stack}
-To address the issue of not being able to issue commands fast enough, we
-pre-generate all of our commands in the stack such that we don't waste cycles
-generating commands in-between issuing them. For firmware buffering, $20$ bytes of
-memory must be reserved for each instruction issued. It is easy to see that this
-is impractical. If our final matrix is $64\times 64$, we would consume a very
-substantial $80$~KB on the stack for buffering these instructions. We are
-limited both in terms of stack size, and BlockRAM. 
+% \subsection{Firmware/Stack}
+% To address the issue of not being able to issue commands fast enough, we
+% pre-generate all of our commands in the stack such that we don't waste cycles
+% generating commands in-between issuing them. For firmware buffering, $20$ bytes of
+% memory must be reserved for each instruction issued. It is easy to see that this
+% is impractical. If our final matrix is $64\times 64$, we would consume a very
+% substantial $80$~KB on the stack for buffering these instructions. We are
+% limited both in terms of stack size, and BlockRAM. 
 
-% TODO: include firmware
-\begin{table}
-  \centering
-  \begin{tabular}{r|rr}
-    \toprule
-    Units & Peripheral & Processor\\
-    \midrule
-    0&?&21383 \\
-    1&14658&15155 \\
-    2&7458& 7957 \\
-    4&4050& 4651 \\
-    8&3855& 4351 \\
-    12&3989& 4520 \\
-    16&3955& 3329 \\
-    \bottomrule
-  \end{tabular}
-  \caption{Cycle count recorded within our hardware and firmware when buffering
-    instructions within firmware. Buffering: Overhead: Buffer cycles: 696. Copy cycles: 4982}
-\end{table}
+% % TODO: include firmware
+% \begin{table}
+%   \centering
+%   \begin{tabular}{r|rr}
+%     \toprule
+%     Units & Peripheral & Processor\\
+%     \midrule
+%     0&?&21383 \\
+%     1&14658&15155 \\
+%     2&7458& 7957 \\
+%     4&4050& 4651 \\
+%     8&3855& 4351 \\
+%     12&3989& 4520 \\
+%     16&3955& 3329 \\
+%     \bottomrule
+%   \end{tabular}
+%   \caption{Cycle count recorded within our hardware and firmware when buffering
+%     instructions within firmware. Buffering: Overhead: Buffer cycles: 696. Copy cycles: 4982}
+% \end{table}
 
-We observe very minor performance improvements, but nothing too substantial.
-Whatever performance increase that is incurred may equally be attributed to
-compiler optimisations, as we instruct GCC to optimise our produced machine
-code with the \texttt{-O2} parameter. 
+% We observe very minor performance improvements, but nothing too substantial.
+% Whatever performance increase that is incurred may equally be attributed to
+% compiler optimisations, as we instruct GCC to optimise our produced machine
+% code with the \texttt{-O2} parameter. 
 
-One of the problems with firmware buffering is that the memory wall of issuing
-commands to the accelerator still exists, we still rely on the AXI4 bus latency
-to write to accelerator memory.
+% One of the problems with firmware buffering is that the memory wall of issuing
+% commands to the accelerator still exists, we still rely on the AXI4 bus latency
+% to write to accelerator memory.
 
-\subsection{Hardware}
-Within hardware buffering, we pre-emptively issue commands into an 'instruction'
+% \subsection{Hardware}
+For command buffering, we pre-emptively issue commands into an 'instruction'
 region of hardware and set an associated 'program counter' on execution.
-Instructions are then issued each cycle, removing the AXI4 memory bus latency.
-
-We may have seperate regions of preloaded commands, and store only the start
-addresses. As a consequence we need only set the program counter and mark
+Instructions are then issued each cycle removing the associated AXI4 memory bus
+latency. We may have seperate regions of preloaded commands, and store only the
+start addresses. As a consequence we need only set the program counter and mark
 execution to perform an entire matrix multiplication.
 
 One of the principal issues encountered during development was infinite stalling
 due to conflicts between BSV rules. The rule which decodes an
-instruction reads from and writes to the \texttt{server\_busy} vector of
+instruction reads from and writes to a \texttt{server\_busy} vector of
 registers. The rule which writes the result of a functional unit computation to
-memory also reads from and writes to the \texttt{server\_busy} vector in the
+memory also reads from and writes to the same \texttt{server\_busy} vector in the
 same cycle. As a result, while the execution of an instruction is stalling
 within hardware (as opposed to firmware), the conflicting rule that actually
-writes into memory and marks the computation as complete does not fire. We have
-experimented with using \texttt{FIFOs}, and \texttt{CReg} concurrent registers
-to avoid this sort of rule conflict to no avail. Further time must be spent on
-this technique.
+writes into memory and marks the computation as complete does not fire. We must
+further experiment with using \texttt{FIFOs}, and \texttt{CReg} concurrent registers
+to avoid this sort of rule conflict. Further time must be spent to fix this rule
+conflict.
 
 \section{Firmware Stalling/Interrupts}
 One of the potential criticisms of the technique of constantly polling a region
 of memory is that hardware interrupts were designed for the very purpose of
 removing the need for this to happen.
 
-% TODO: Cite this: https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/beginner-guide-on-interrupt-latency-and-interrupt-latency-of-the-arm-cortex-m-processors 
-On an ARM system, the hardware interrupt latency is $\approx 12$ cycles. On a
-Risc-V system, interrupt behavior is exceedingly complicated. A Risc-V processor
+On an ARM system, the hardware interrupt latency is $\approx 12$
+cycles\cite{arm-irl}, around the same number of cycles to perform an uncached
+memory request over the AXI4 bus. On a Risc-V system, interrupt behavior is
+exceedingly complicated. A Risc-V processor
 has, by default, a memory-mapped peripheral known as a Platform Level Interrupt
 Controller (PLIC). The PLIC is responsible for multiplexing multiple interrupt
 requests of different priorities. While the PLIC registers interrupts and stores
 the necessary information for prioritising them, it is the role of the firmware
 to actually perform an associated task when an interrupt occurs.
 
-% TODO: Cite: https://sifive.cdn.prismic.io/sifive/0d163928-2128-42be-a75a-464df65e04e0_sifive-interrupt-cookbook.pdf 
-From the SiFive interrupt cookbook, we see:
+From the SiFive interrupt cookbook\cite{sifive-ir}, we see:
 \begin{lstlisting}[language=C,style=customc]
 void machine_external_interrupt()
 {
@@ -2288,42 +2264,37 @@ accelerator memory. There is then the additional overhead of marking the
 interrupt claim to be complete, and running the interrupt handler. Within our
 interrupt handler we would need to then read from our accelerator memory to
 determine which of our functional units are busy before issuing a new command.
-All of this associated overhead would significantly reduce the ability of our
-processor to rapidly issue instructions. There is also the additional overhead
-of moving the variables in all of our registers into the stack when the
-interrupt function is called. Crucially, we observe that the associated latency
-of processing interrupts greatly supercedes that of looping and polling a region
-of memory to determine whether an operation within the accelerator has completed.
+There is also the additional overhead of moving the variables in all of our
+registers into the stack when the interrupt function is called. We observe that
+the latency of processing interrupts greatly supercedes that of looping and
+polling a region of memory to determine whether an operation within the
+accelerator has completed.
 
 \section{Instruction jumping}
 One of the more novel ideas for getting a marginal speed-up in issuing commands
 is to reduce the processor branching overhead by incoorporating the stalling
-logic into the processor itself.
-
-% TODO: Rephrase BUBBLING
-When making use of a for loop for branching, processor cycles are wasted
-continuously loading the branch instruction, and bubbling the pipeline.
-
-We observe that this overhead can be removed by moving the program counter into
-a region of memory within our peipheral that jumps back to itself. This region
-can then be overwritten to jump back to the address after the stalled section in
-C when appropriate.
+logic into the processor itself. When making use of a for loop for branching,
+processor cycles are wasted continuously loading the branch instruction, and
+flushing the pipeline. We observe that this overhead can be removed by moving
+the program counter into a region of memory within our peipheral that jumps back
+to itself. This region can then be overwritten to jump back to the address after
+the stalled section in C firmware when appropriate. Thus, we eliminate the
+overhead of fetching a branch intruction to loop within firmware.
 
 For testing purposes, we attempt to execute some example code within our
-accelerator memory. This is a non-trivial process...
-% TODO: Execute this code
-% Highlight the issue
-\begin{verbatim}
+accelerator memory. We  
+
+\begin{figure}[h]
+\begin{lstlisting}[language=C,style=customc,xleftmargin=0.05\textwidth]
 // MMIO PC
 void __attribute__((noinline, section(".dummy_section"))) func_test() {
-  print("Meme!\n");
+  print("Testing!\n");
 }
 
-// Linker script modified
+// Linker script modified to mark start and end address of our function above
 extern unsigned char dummysec_start[];
 extern unsigned char dummysec_end[];
 void main() {
-  /* uint32_t label_addr = &&label_test; */
 
   uint32_t func_size = dummysec_end-dummysec_start;
   /* printf("Func Size: 0x%X\n", func_size); */
@@ -2340,14 +2311,25 @@ void main() {
   /* // Move func_test TO stupid SoC chip! */
   //asm volatile ("call % " :: "r"(&func_test));
 
-  ((void (*)(void))0x80010CB8)();
-  ((void (*)(void))0xC0002008)(); // Processor stall indefinitely.
-  print("Test");
+  ((void (*)(void))0x80010C98)(); // call @ &func_test within RAM -- works
+  ((void (*)(void))0xC0002008)(); // call @ ACCEL_STAT_ADDR+8 within Accelerator
+  // Processor stalls indefinitely...
+  print("Success");
 }
+// OUTPUT:
+// Testing!
+\end{lstlisting}
+  \caption{Source code to trick the program counter to move into accelerator memory.}
+\end{figure}
 
-func_test address: 80010C98
-Meme!
-\end{verbatim}
+The processor stalls because the instruction cache does not know how to forward
+the instruction fetch request to accelerator memory. Within our processor
+design, our accelerator is marked as I/O memory, and is therefore inaccessible
+to the instruction cache. Since we have based our work on the open source
+Piccolo processor. It would be possible, with additional work, to enter the
+internals and trick the instruction cache (\texttt{MMU\_Cache.bsv}) to fetch the
+instruction at a particular address within our peripheral. This would not be
+possible with a closed source system.
 
 \section{Further Work}
 \subsection{Protocol efficiency/optimisation}
@@ -2368,105 +2350,117 @@ instructions to compute each element in our final matrix are generated and
 scheduled automatically within our hardware. This would perform the same
 speed-up as hardware buffering, and would avoid the associated memory cost.
 
-\subsection{Memory Striping}
-One of the big problems with our accelerator is the design of the multi-ported
-memory. By duplicating our memory writes across $n$ channels for $n-1$
-functional units, we occupy a very significant amount of BlockRAM on our
-accelerator.
+% \subsection{Memory Striping}
+% One of the big problems with our accelerator is the design of the multi-ported
+% memory. By duplicating our memory writes across $n$ channels for $n-1$
+% functional units, we occupy a very significant amount of BlockRAM on our
+% accelerator.
 
-% TODO: Synthesis
-% The process of synthesis becomes a very delicate balance between...
-Given more time, we could instead stripe our memory into separate banks, with a
-low probability that more than two indexes are read from the same bank in the
-same cycle. While this is unlikely due to the nature of memory accesses for matrix
-multiplication, this can be made easier by also duplicating the striped memory
-banks as shown previously.
+% % TODO: Synthesis
+% % The process of synthesis becomes a very delicate balance between...
+% Given more time, we could instead stripe our memory into separate banks, with a
+% low probability that more than two indexes are read from the same bank in the
+% same cycle. While this is unlikely due to the nature of memory accesses for matrix
+% multiplication, this can be made easier by also duplicating the striped memory
+% banks as shown previously.
 
-% TODO: Analysis: Math to show memory consumption.
-One of the most important considerations when implementing this form of striped
-memory is how to apply the associated back-pressure and arbitration when two functional units
-are reading from the same memory bank in the same channel. One of the units
-would need to be stalled. It is likely that the processing and scheduling logic
-for this would lead to wasted cycles, and therefore a reduction in compute
-speed. It would be an interesting exercise to see how this reduction in compute
-speed compares to the savings in BlockRAM.
+% % TODO: Analysis: Math to show memory consumption.
+% One of the most important considerations when implementing this form of striped
+% memory is how to apply the associated back-pressure and arbitration when two functional units
+% are reading from the same memory bank in the same channel. One of the units
+% would need to be stalled. It is likely that the processing and scheduling logic
+% for this would lead to wasted cycles, and therefore a reduction in compute
+% speed. It would be an interesting exercise to see how this reduction in compute
+% speed compares to the savings in BlockRAM.
 
 \chapter{Summary and Conclusions} 
 \section{Summary}
 We have successfully made use of open source resources to synthesise a minimal
-functioning Risc-V SoC. This system acts as a baseline and allows us to rapidly
-prototype and simulate a linear algebra co-processor and develop the associated
-firmware to communicate between the co-processor and a Risc-V core. We achieve
-a significant performance improvement without sacrificing floating point
+functioning Risc-V SoC. This system acts as a suitable baseline and allows us to
+rapidly develop and prototype a linear algebra co-processor along with the
+associated firmware to communicate between the co-processor and our Piccolo
+Risc-V core. We successfully fixed the problems within the source code of the
+Piccolo FPU. With a vague and unclear ISA specificaton, we used our ability to
+inspect the internals of the open source processor to determine how to prevent
+our processor from trapping when a floating point instructon is executed.
+
+We achieve a significant performance improvement without sacrificing floating point
 accuracy through exploiting the pipelined nature of the floating point Bluespec
 Verilog libraries and designing our own highly pipelined multiplication pairwise
 addition (PMPA) functional unit, which is almost three fold faster than a
 conventional fused-multiply accumulate unit that is used within the floating
-point units of conventional microprocessors. Through designing our own highly
+point units of conventional microprocessors. Through designing our own
 parametised multi-channel memory module we take advantage of the inherent
-parallelism offered by hardware and demonstrate a further four-fold computation
-speed increase through the use of multiple functional units. We observe that the
+parallelism offered by hardware and demonstrate a further significant computation
+speed increase through the use of multiple functional units. However, it is
+vital to consider that our multi-channel memory is highly inefficient,
+especially because FPGA BlockRAM is a sparse resource. We observe that the
 limiting factor preventing further speed-up is the rate at which we can issue
 instructions to our co-processor and we contemplate ways of increasing this.
 
 \section{Conclusions}
-We have verified the feasibility of our design through synthesis and
-demonstrated the performance advantages through simulations.
-
-% TODO: Cite SSE (UP TOP)
+% Vector ISA vs Accelerator
 We struggle to provide an associated Risc-V vector ISA benchmark within our
-simulations as it has not yet been ratified, however we may anticipate a 2-4
-fold increase in computation speed for matrix multiplication. The common SSE
-instructions on x86 systems can compute 4 values per cycle, so a 2-4 fold cycle
-count reduction would be expected of the vector ISA for it to be competitive.
-We observe that in our earlier sections, we observe at most a 4 fold performance
-increase when multiplying large matrices. With this information we suspect that
-a vector ISA extension be equally performant. Alternatively, it could be argued
-that our accelerator is significantly simpler than modifying the internals of a
-CPU to implement an unratified vector ISA, and the interopability associated
-with an AXI4 peripheral would allow our accelerator to interface with any
-processor.
+simulations as it has not yet been ratified. The SSE instructions on x86
+systems can compute 4 values per cycle, so a cycle count reduction by 2-4 fold
+would be expected of the vector ISA for it to be competitive. We observe that in
+our earlier sections, we observe at most a 4 fold performance increase when
+multiplying large matrices. With further work addressing the communication
+bottleneck, and an ability to issue instructions at a faster rate and make the
+protocol more efficient, we have evidence to suggest that with further work
+addressing this bottleneck, we can obtain a greater performance increase than a
+vector ISA.
 
-The design structure of the peripheral makes it simple to add additional
-functionality. The structure may be replaced by a tagged union and different
-operations may be decoded. For instance: if we want to accelerate neural network
-inference, we may pass commands that apply activation functions to large vectors
-of data. By sharing the same region of memory within the peripheral, there is no
-data movement overhead. 
+% Benefits and disadvantages of BSV
+We suceeded in our aim of making good use of high level hardware design
+languages. BSV makes it simple to add additional functionality to our
+accelerator. The command struct may be replaced by a tagged union and different
+commands may be decoded into different instructions with different arguments.
+For instance: if we want to accelerate neural network inference, we may pass
+commands that apply activation functions to large vectors of data in parallel.
+With the data operated on all sharing the same memory module within the
+peripheral, there would be no overhead associated with data movement between
+issuing different instructions. Thus, our design can easily be built upon by
+others and extended.
 
-% TODO: FPGA resources occupancy --- blockRAM saturates quickly (In particular)
 One of the shortcomings associated with the use of Bluespec Verilog observed
-through the project, was that it is more difficult to keep track of the amount
-of FPGA resources used upon synthesis. Due to the duplication of accelerator
-memory across multiple channels and the parameterisation of many modules, small
-changes in configuration or constants may have a impact on generated hardware
-that is not intuitive to the designer despite providing more flexibility.
+through the project, was that it is more difficult to keep an intuitive track of
+the amount of FPGA resources used upon synthesis. We have limited BlockRAM on
+our FPGA and this was particularly apparent when adding more functional units.
+Due to the duplication of accelerator memory across multiple channels and the
+parameterisation of our functional unit modules, small changes in configuration
+or constants may have a significant impact on the amount of hardware that is
+generated.
 
-We underestimated our predicted cycle counts for our pipelined functional units
+We underestimated the predicted cycle counts for our pipelined functional units
 by $2N$. This is partly because cycles were wasted while the FSM was changing
 state. There may also be an additional overhead where a server request cannot be
 given to a floating point unit at the same cycle a response is received.
 Crucially, despite the fact that Bluespec offers superior scheduling support,
 the only way to accurately determine the cycle counts of performing operations
 with our hardware is through \texttt{\$display(...)} statements within
-simulations. It is therefore difficult to strictly adhere to strict timing
-requirements when designing hardware.
+simulations. It is therefore difficult to adhere to strict timing requirements
+using this language.
 
-While we succeeded in performing synthesis with our minimal SoC system, one of
-the principal shortcomings were the problems encountered in performing synthesis
-with our accelerator as opposed to the rest of our SoC. While open source tools
+% Failure of synthesis
+We have verified the feasibility of our minimal SoC through synthesis and clearly
+demonstrated the performance advantages through simulations. However, one of the
+principal shortcomings were the problems encountered in attaching our
+accelerator to the rest of our SoC within Xilinx Vivado. While open source tools
 were used in the development process and for simulations, we must still use the
-proprietary tools for synthesis, and the format of generated RTL for an AXI4
-peripheral written in BSV is fundamentally incompatible with the Xilinx Vivado
-block design tool.
+proprietary tools for synthesis, and the format of the generated Verilog RTL for
+an AXI4 peripheral written in BSV is incompatible with the Xilinx Vivado block
+design tool.
 
 In retrospect, for the purpose of generating bitstreams and performing place and
-route algorithms, it was unwise to seperate the development process from
-the computer aided design tools (Xilinx Vivado). The process of synthesis and
-SoC design are very strongly coupled to each other, and both should ideally be
-simulated and synthesised on the same CAD platform. This can be seen with the
-Freedom E310 SoC built using the Rocket processor, where the build tools
-themselves invoke Xilinx Vivado through commandline scripts.
+route algorithms, it was unwise to fully seperate the development process from
+the computer aided design tools (Xilinx Vivado). This project reveals that the
+process of synthesis and SoC design are very strongly coupled to each other, and
+our accelerator should have ideally be designed and synthesised on a CAD
+platform to ensure that synthesis is successful at each stage. In this situation
+our peripheral would have had to conform to the appropriate AXI4 data bus width
+supported by Vivado Studio from the very beginning. 
+
 
 
 % NOTE: Clearly present argument and demonstrate that success criteria were

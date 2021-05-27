@@ -2,11 +2,6 @@
 {\Huge \bf Abstract}
 \vspace{24pt} 
 
-
-Write a summary of the whole thing. Make 
-sure it fits in one page. 
-
-Testing
-
+With the growth of reprogrammable hardware and the emergence of open source hardware and high level hardware design languages, it has become significantly easier to design an accelerator for domain-specific computational tasks. We design a linear algebra co-processor for the purpose of speeding up machine learning and signal processing algorithms. This is particularly useful in the realm of embedded devices: such as self-driving cars. In the process, we target the open source Bluespec Inc. Piccolo Risc-V processor, and rapidly develop and prototype our accelerator using a Verilator testbench. We succeed in synthesising a baseline Risc-V SoC which we write firmware for, and base our later work on. We then make full use of the advanced scheduling capabilities offered by Bluespec Verilog and floating point libraries provided to design pipelined hardware for rapid and parallelised matrix multiplication. We observe that the communication bottleneck is the rate at which we can issue instructions to our accelerator. We then proceed to contemplate a range of methods for addressing and improving the communication bottleneck.
 \newpage
 \vspace*{\fill}
