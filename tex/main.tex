@@ -35,6 +35,7 @@
 \usepackage{biblatex}
 \addbibresource{bibliography.bib}
 
+\usepackage{float}
 \usepackage{booktabs}
 \usepackage{amsmath,amssymb}
 \usepackage{fancyvrb,listings}
@@ -104,6 +105,7 @@
 % NOTE: Analysis of requirements and justified & documented use of tools!
 
 
+% TODO: Qualcomm Hexagon DSP
 
 % TODO: Altera: https://dl.acm.org/doi/10.1145/2847263.2857658
 % https://newsroom.intel.com/wp-content/uploads/sites/11/2018/05/moores-law-electronics.pdf 
@@ -137,6 +139,8 @@ compel us to develop an accelerator for this purpose, where we may make use of
 publically available open source tooling. This provides us with a strong
 foundation to base our work off.
 
+% TODO: We seek to DISPEL this notion (BlueVec mentions it too)
+% highly customised accelerator is EASY
 Previously, it was thought that SIMD and vector instructions would offer a
 significant enough performance improvement that they would supercede the
 development cost of an accelerator. Crucially, this comes at a cost of
@@ -192,7 +196,6 @@ hardware. The ISA also specifies the method of memory addressing, whether
 addresses need to be aligned, and the structure of processor instructions. Most
 desktop computers make use of the x86\_64 ISA, with embedded devices and mobile
 phones commonly using the ARM ISA.
-
 
 Risc-V is an open standard instruction set architecture (ISA). It is provided
 under open source licenses, where anybody may use the ISA with no restrictions
@@ -267,12 +270,12 @@ toggled from low to high accordingly, and signals propagated through simulated
 hardware accordingly.
 
 In order to run our verilator simulation, we include our verilator-compiled C++
-headers and libraries that were generated from our hardware into our C++ test
-bench. We then proceed to initialise the verilator class representing the
+headers and libraries that were generated from our hardware into our C++
+testbench. We then proceed to initialise the verilator class representing the
 top-level module of our hardware design. It is then possible to toggle the clock
-signal and propagate our simulated hardware forwards in time. This is done as
-follows:
-\begin{lstlisting}[language=C++,style=customcpp]
+signal and propagate our simulated hardware forwards in time.
+\begin{figure}[h]
+\begin{lstlisting}[language=C++,style=customcpp,xleftmargin=.05\textwidth]
 #include <verilated.h>
 #include "VTop.h"
 uint64_t main_time = 0;
@@ -298,12 +301,14 @@ int main (int argc, char **argv, char **env) {
 }
 
 \end{lstlisting}
+\caption{An example C++ verilator testbench}
+\end{figure}
 
 While verilator suceeds in simulating hardware logic, it does not take physical
 considerations into account. For instance, every hardware design has a route through
 combinatorial logic known as the critical path, this is the circuitry where
 speed of propagation leads to a bound on the maximum clock rate that is
-achieveable.
+achieveable. Verilator provides no information about this.
 
 % https://www.veripool.org/papers/Verilator_Fast_Free_Me_DVClub10_pres.pdf
 
@@ -373,9 +378,10 @@ modularised, counterintuitively, becomes harder to read and understand.
 Moreover, if a single wire needs to be modified, it needs to be explicitly
 stated in every instance of a module, a time consuming process.
 
-This can be seen as follows:
+\begin{figure}[h]
 \tiny
-\begin{verbatim}
+\centering
+\begin{BVerbatim}
   mkUART uart0(.CLK(CLK),
          .RST_N(RST_N),
          .put_from_console_put(uart0$put_from_console_put),
@@ -432,8 +438,12 @@ This can be seen as follows:
          .RDY_get_to_console_get(uart0$RDY_get_to_console_get),
          .RDY_put_from_console_put(uart0$RDY_put_from_console_put),
          .intr(uart0$intr));
-\end{verbatim}
+\end{BVerbatim}
 \normalsize
+\caption{A UART peripheral within an SoC module written in Verilog RTL. All AXI4 connections must be
+  individually manually connected to the bus interconnect.}
+\label{fig:uart_wires}
+\end{figure}
 
 The traditional HDLs were built to be hardware simulation languages and were not
 intended for the purpose of designing very complex hardware, such as processors.
@@ -449,50 +459,54 @@ of the hardware changes, by looking at an \texttt{always\_comb} block.
 
 Due to the difficulties concerning development time, and for purposes of
 efficiency, more expressive hardware design languages have been created, namely,
-ChiselHDL and Bluespec Verilog. The Risc-V Rocket processor is designed in
-ChiselHDL, whilst the Risc-V Piccolo, Flute and TOOOBA processors are written in
-BSV. The creation of a soft-core processor is a demonstration of the ability of
-these languages to be applied in practice and make the process of processor
-design more efficient and structured.
+ChiselHDL and Bluespec Verilog. These are explained more thoroughly in later chapters.
+
+% The Risc-V Rocket processor is designed in
+% ChiselHDL, whilst the Risc-V Piccolo, Flute and TOOOBA processors are written in
+% BSV. The creation of a soft-core processor is a demonstration of the ability of
+% these languages to be applied in practice and make the process of processor
+% design more efficient and structured. Bluespec Verilog offers significant
+% advantages over ChiselHDL.
+
+% In Chapter 2, we make use of the
+% libraries available within BSV to perform floating point computations with ease.
+% In Chapter 3, we exploit the advanced scheduling capabilities of BSV to issue
+% computations to different hardware units, and make extensive use of pipelining
+% for greater concurrency in our floating point computations. We later discuss the
+% Rocket and Piccolo processors written about in a later section.
+% % TODO: Cite https://dl.acm.org/doi/abs/10.1109/MEMCOD.2004.1459818 
+
 
 % TODO: Cite https://people.eecs.berkeley.edu/~krste/papers/chisel-dac2012.pdf 
-\subsection{ChiselHDL \& Bluespec Verilog}
-Chisel (Constructing Hardware In a Scala Embedded Language), is a new
-programming language for hardware design that is based on Scala, that is
-executed on a JVM.
+% \subsection{ChiselHDL \& Bluespec Verilog}
+% Chisel (Constructing Hardware In a Scala Embedded Language), is a new
+% programming language for hardware design that is based on Scala, that is
+% executed on a JVM.
 
-Chisel is capable of generating low-level Verilog from high-level hardware
-design patterns that are written in Scala.
+% Chisel is capable of generating low-level Verilog from high-level hardware
+% design patterns that are written in Scala.
 
-Chisel allows inputs and outputs of modules to be bundled together, and
-modules to be composed with ease. Code may be written in Scala to construct
-hardware and therefore speed up the development process.
+% Chisel allows inputs and outputs of modules to be bundled together, and
+% modules to be composed with ease. Code may be written in Scala to construct
+% hardware and therefore speed up the development process.
 
-% Chisel generator / example
-% Chisel I/O / Module + Bundle of Bundles
+% % Chisel generator / example
+% % Chisel I/O / Module + Bundle of Bundles
 
-This is best demonstrated with the AXI4 protocol, 
-the mess of wire connections, as seen above with standard Verilog, is no longer
-an occurence due to the object-oriented nature of Chisel.
-\tiny
-\begin{verbatim}
-class AXIPeripheral extends Module {
-  val io = new Bundle {
-    val slave = new AXISlaveIF(8, 32)
-  }
-  [...]
-}
-\end{verbatim}
-\normalsize
+% This is best demonstrated with the AXI4 protocol, 
+% the mess of wire connections, as seen above with standard Verilog, is no longer
+% an occurence due to the object-oriented nature of Chisel.
+% \tiny
+% \begin{verbatim}
+% class AXIPeripheral extends Module {
+%   val io = new Bundle {
+%     val slave = new AXISlaveIF(8, 32)
+%   }
+%   [...]
+% }
+% \end{verbatim}
+% \normalsize
 
-Bluespec Verilog offers significant advantages over ChiselHDL. These are
-explained more thoroughly in later sections. In Chapter 2, we make use of the
-libraries available within BSV to perform floating point computations with ease.
-In Chapter 3, we exploit the advanced scheduling capabilities of BSV to issue
-computations to different hardware units, and make extensive use of pipelining
-for greater concurrency in our floating point computations. We later discuss the
-Rocket and Piccolo processors written about in a later section.
-% TODO: Cite https://dl.acm.org/doi/abs/10.1109/MEMCOD.2004.1459818 
 
 \chapter{Related Work} 
 \section{BlueVec}
@@ -516,7 +530,7 @@ neural network inference, where the BlueVec co-processor is used in the context
 of a digit recognition problem.
 
 The BlueVec co-processor is interacted with through the use of a custom
-instruction set extensin for the Nios II. The Altera Nios II is a soft-core processor
+instruction set extension for the Nios II. The Altera Nios II is a soft-core processor
 that is designed to be synthesised on an Altera FPGA. It has a 32-bit RISC-based
 architecture, and while the internals are closed source, it is possible to add
 custom instruction set extensions within hardware. Altera provides their
@@ -539,10 +553,10 @@ from external memory at a very high rate.
 % TODO: Lane-local memories / Pipelining
 % Each thread has its own LANE. --- Similar to multi-channel memory.
 
-In order to maximise the clock frequency of the BlueVec processor, and therefore
-maximise throughput, the BlueVec processor pipelines operand fetching,
-instruction execution and result writeback. This reduces the length of the
-critical path.
+% In order to maximise the clock frequency of the BlueVec processor, and therefore
+% maximise throughput, the BlueVec processor pipelines operand fetching,
+% instruction execution and result writeback. This reduces the length of the
+% critical path.
 
 % TODO : Link to BSV
 The BlueVec co-processor consists of approximately 1000 lines of Bluespec
@@ -753,42 +767,26 @@ have greater FPGA resources to make use of.
 
 \section{Risc-V Firmware}
 \subsection{Risc-V Assembly \& Firmware Structure}
-The firmware which runs on an embedded Risc-V core is significantly different to
-software that runs on top of an operating system. In order to compile C and
-assembly language into machine code, we make use of the GNU compiler collection
-(GCC).
+In order to compile C and assembly language into machine code for our bare-metal
+firmware, we make use of the GNU compiler collection (GCC). Crucially, our
+firmware is not an operating system, we must therefore perform a substantial
+setup procedure before executing our own code.
 
-The naming convention for compilers is \texttt{arch-vendor-os-libc-gcc}. The
-standard, desktop version of gcc \texttt{x86\_64-pc-linux-gnu-gcc} is not
-capable of producing Risc-V machine code. Moreover, it is targetted at the linux
-operating system, and uses the linux GNU LibC and supports linux system calls.
-In order to compile our Risc-V assembly and C into Risc-V machine code, we must
-use a cross-compiler. We build a compiler on our host x86\_64 system to run on
-an x86\_64 machine, that is capable of producing a Risc-V ELF binary.
+% The naming convention for compilers is \texttt{arch-vendor-os-libc-gcc}. The
+% standard, desktop version of gcc \texttt{x86\_64-pc-linux-gnu-gcc} is not
+% capable of producing Risc-V machine code. Moreover, it is targetted at the linux
+% operating system, and uses the linux GNU LibC and supports linux system calls.
+% In order to compile our Risc-V assembly and C into Risc-V machine code, we must
+% use a cross-compiler. We build a compiler on our host x86\_64 system to run on
+% an x86\_64 machine, that is capable of producing a Risc-V ELF binary.
 
 The \texttt{riscv64-unknown-elf-gcc} compiler is designed to produce a
-bare-metal Risc-V binary. Instead of using GNU LibC, the C library used is
-Newlib. Newlib is C library that is designed for embedded systems. With Newlib,
-we now have access to the standard C functions for IO \texttt{printf}, and math
-functions, such as \texttt{pow}, and \texttt{sqrt}. The relevant machine code
-for these functions are statically linked, and the code within our final binary
-ELF is entirely self-contained. This can be seen in the section layout of our
-produced ELF file.
-
-Due to the 32-bit configuration of the Piccolo processor that we are using, we
-must restrict GCC to using 32-bit instructions, and 
-
-Relevant sections of our final ELF file: We have a $64$~KB stack, and statically
-linked functions from newlib.  
-\tiny
-\begin{verbatim}
-Section .stack         : addr         800000f8 to addr         80010100; size 0x   10008 (= 65544) bytes
-Section .text.pow       : addr         80013444 to addr         8001352e; size 0x      ea (= 234) bytes
-Section .text.__ieee754_pow: addr         8001352e to addr         80013fee; size 0x     ac0 (= 2752) bytes
-Section .text.__ieee754_sqrt: addr         80013fee to addr         800141b4; size 0x     1c6 (= 454) bytes
-Section .text.memcpy    : addr         8001707c to addr         80017164; size 0x      e8 (= 232) bytes
-\end{verbatim}
-\normalsize
+bare-metal Risc-V binary. Instead of using GNU LibC the C library used is
+Newlib, which is designed for embedded systems. We now have access to the
+standard C functions for IO \texttt{printf}, and math functions, such as
+\texttt{pow}, and \texttt{sqrt}. The relevant machine code for these functions
+are statically linked and are contained within the \texttt{.text} section of our
+produced ELF binary.
 
 \subsubsection{UART/Serial Output}
 % TODO: UART cite
@@ -820,21 +818,16 @@ be within our ROM, and the VMA must be within our RAM. Furthermore, we must also
 zero our uninitialised static variables \texttt{(.bss)}, with the VMA in our
 RAM. We must also specify the start VMA address of our stack.
 
-The main sections of the linker file are as follows: The \texttt{.vector}
+The other sections of the linker file are as follows: The \texttt{.vector}
 section contains the instructions that are run after the processor is booted.
 The \texttt{.stack} section is an empty region at the beginning of memory
-where the \texttt{\_stack\_start} symbol is defined. The \texttt{.data} section
-contains initialised data, that is typically accessed through global pointer
-(\texttt{gp}) relative addressing. The \texttt{.bss} section contains
-uninitialised data. Lastly, the \texttt{.text} section contains our machine
-code.
+where the \texttt{\_stack\_start} symbol is defined. Lastly, the \texttt{.text}
+section contains our machine code and read-only data, such as constants.
 
-We intentionally place the stack below our \texttt{.text} code section for security
-purposes. The stack grows downwards, and as a result it cannot write into our
-code section in the situation that a stack overflow occurs.
-
+\begin{figure}[h]
+  \centering
 \scriptsize
-\begin{verbatim}
+\begin{BVerbatim}
 OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv", "elf32-littleriscv")
 OUTPUT_ARCH(riscv)
 ENTRY(crtStart)
@@ -888,17 +881,35 @@ SECTIONS {
     _stack_start = .;
   } > RAM /* LMA = VMA @ RAM */
 }
-\end{verbatim}
+\end{BVerbatim}
 \normalsize
+\caption{Our commented linker file responsible for the memory layout of our ELF
+  firmware binary}
+\end{figure}
 
-We make use of the \texttt{(AT)} keyword, to specify an alternative LMA which
-differs from our VMA. We must write firmware to copy over our static variables
-from ROM into RAM, and zero our uninitialised variables in RAM.
+Within our linker file, we make use of the \texttt{(AT)} keyword, to specify an
+alternative LMA which differs from our VMA. We must write firmware to copy over
+our static variables from ROM into RAM, and zero our uninitialised variables in RAM.
 
 Other sections of code are not included. The heap is unspecified, as it is
 unnecessary for the purposes of lightweight firmware. Since we are compiling C,
 we omit the C++ sections for storing static constructors \texttt{(.ctors)} and
 destructors \texttt{(.dtors)}.
+
+\begin{figure}[h]
+  \centering
+  \scriptsize
+\begin{BVerbatim}
+Section .vector         : addr         80000000 to addr         8000000e; size 0x       e (= 14) bytes
+Section .text           : addr         80000010 to addr         80006694; size 0x    6684 (= 26244) bytes
+Section .data           : addr         80800000 to addr         80800430; size 0x     430 (= 1072) bytes
+Section .bss            : addr         80800430 to addr         80800c34; size 0x     804 (= 2052) bytes
+Section .stack          : addr         80800c34 to addr         80804c40; size 0x    400c (= 16396) bytes
+\end{BVerbatim}
+  \normalsize
+  \caption{Relevant sections of our compiled ELF file are shown. Crucially, we
+    have a $16$~KB stack.}
+\end{figure}
 
 One of the first problems encountered was a CPU trap due to a stack overflow.
 The size of the stack may be modified in the linker file. The \texttt{embeddedartistry}
@@ -927,11 +938,11 @@ of assembly code at the beginning of RAM.
 
 Of notable importance is setting the stack pointer \texttt{sp}, to ensure that
 stack memory is allocated in the correct region of memory. We also set the
-global pointer to allow global pointer relative addressing of variables in our
-data section.
+global pointer to allow the global pointer relative addressing of variables in our
+data section. This is done as follows.
 
-
-\lstset{language=[RISC-V]Assembler, style=customrv}
+\begin{figure}[h]
+\lstset{language=[RISC-V]Assembler, style=customrv,xleftmargin=0.1\textwidth}
 \begin{lstlisting}
 .global crtStart
 .global main
@@ -943,19 +954,22 @@ crtStart:
   jalr x1, x2   // jump to label crtInit
   nop
 
-.section .text
+.section .main
 crtInit:
   .option push
   .option norelax
   la gp, __global_pointer$ // Set global pointer for GP-relative addressing
   .option pop
   la sp, _stack_start // Set stack pointer to beginning of stack
+  call initialize_ram
   call main
 infinitLoop:
   j infinitLoop
 
 \end{lstlisting}
 \lstset{}
+\caption{Boot initialisation}
+\end{figure}
 
 \section{Testbench Setup}
 \subsection{Debugging Piccolo: FPU}
@@ -974,6 +988,8 @@ integration, or testing, this issue has not yet been fixed.
 % TODO: Submit a pull request
 
 % NOTE: Compile log
+\begin{figure}[h]
+\scriptsize
 \begin{verbatim}
 compiling Piccolo/src_Core/CPU/FPU.bsv
 Warning: Unknown position: (S0080)
@@ -991,6 +1007,9 @@ The return type according to the use:
       FloatingPoint::RoundMode),
       Tuple2#(FloatingPoint::FloatingPoint#(d__, e__), FloatingPoint::Exception)))
 \end{verbatim}
+\normalsize
+\caption{Bluespec Inc. Piccolo processor, floating point ISA extension compiler errors.}
+\end{figure}
 
 In order to successfully compile the Piccolo processor with floating point
 support, we must eliminate the ambiguity manually by specifying which package,
@@ -1035,6 +1054,7 @@ the exception code enumeration. As such, we do not need to constantly switch
 between looking at our program output, and figuring out what the output
 represents in our source code files.
 
+\begin{figure}[h]
 \begin{verbatim}
 // CPU.bsv
    rule rl_trap ((rg_state == CPU_TRAP)
@@ -1047,12 +1067,15 @@ represents in our source code files.
       $finish(0);
    endrule: rl_trap
 \end{verbatim}
+\caption{Changes made to the CPU.bsv trap rule to prevent infinite looping.}
+\end{figure}
 
 The information we obtain about our processor trap can be matched to the
 specific address in assembly code that causes the error. In this particular
 case, the \texttt{flw} instruction is responsible for triggering an
 \texttt{ILLEGAL\_INSTRUCTION} exception.
-\begin{lstlisting}[language=C,style=customc],
+\begin{figure}[h]
+\begin{lstlisting}[language=C,style=customc,xleftmargin=.05\textwidth],
   float a = 1.0f;
   // Assembly:
   // 80002276: lui a5, 0x80001
@@ -1062,6 +1085,9 @@ case, the \texttt{flw} instruction is responsible for triggering an
   // Trap_Info { epc: 'h8000227a, exc_code: 'h2, tval: 'h1a87a787 }
   // Exc_Code: ILLEGAL_INSTRUCTION
 \end{lstlisting}
+\caption{Analysis of our processor trap and finding the instruction (flw) that causes
+it.}
+\end{figure}
 
 We look through our processor code, and identify the locations where this
 particular exception code is set. We observe that it is set in the
@@ -1070,24 +1096,28 @@ struct is copied within the ALU function that corresponds to loading data into
 registers, \texttt{fv\_LD}. If the \texttt{flw} instruction is called, a
 particular bit on the \texttt{mstatus} control-status register (CSR) is read. In
 our case, the fs bit is found to be disabled.
+\begin{figure}[h]
 \begin{verbatim}
-// EX_ALU_functions.bsv
-function ALU_Outputs fv_LD (ALU_Inputs inputs);
-   [...]
-   // FP loads are not legal unless the MSTATUS.FS bit is set
-   Bool legal_FP_LD = True;
-`ifdef ISA_F
-   if (opcode == op_LOAD_FP)
-      legal_FP_LD = (fv_mstatus_fs (inputs.mstatus) != fs_xs_off);
-`endif
-   let alu_outputs = alu_outputs_base;
+ // EX_ALU_functions.bsv
+ function ALU_Outputs fv_LD (ALU_Inputs inputs);
+    [...]
+    // FP loads are not legal unless the MSTATUS.FS bit is set
+    Bool legal_FP_LD = True;
+ `ifdef ISA_F
+    if (opcode == op_LOAD_FP)
+       legal_FP_LD = (fv_mstatus_fs (inputs.mstatus) != fs_xs_off);
+ `endif
+    let alu_outputs = alu_outputs_base;
 
-   alu_outputs.control   = ((legal_LD && legal_FP_LD) ? CONTROL_STRAIGHT
+    alu_outputs.control   = ((legal_LD && legal_FP_LD) ? CONTROL_STRAIGHT
                                                       : CONTROL_TRAP);
-   [...]
-   return alu_outputs;
-endfunction
+    [...]
+    return alu_outputs;
+ endfunction
 \end{verbatim}
+\caption{Finding out why the processor traps by looking at the condition by
+  which the flw instruction fails.}
+\end{figure}
 
 Compared to debugging standard Verilog, the structure of Bluespec Verilog
 provides us with a greater ability to debug, and identify relevant codepaths.
@@ -1103,6 +1133,7 @@ initialisation sequence. Once implemented, we observe that floating point
 instructions operate correctly.
 % https://github.com/riscv/riscv-pk/blob/master/machine/minit.c
 % https://github.com/riscv/riscv-pk/blob/master/machine/encoding.h 
+\begin{figure}[h]
 \begin{lstlisting}[language=C,style=customc]
 // encoding.h
 #define MSTATUS_FS          0x00006000
@@ -1121,6 +1152,9 @@ static void mstatus_init()
   [...]
 }
 \end{lstlisting}
+\caption{Parts of firmware required to enable the Risc-V floating point unit
+  taken from the Risc-V Spike emulator.}
+\end{figure}
 
 % TODO: Citation
 % “The RISC-V Instruction Set Manual, Volume II: Privileged Architecture,
@@ -1137,11 +1171,9 @@ unoccupied memory address range to our peripheral, and give it a small internal
 region of memory where 4-byte integers can be read/written from.
 
 \subsubsection{What is AXI4?}
-A microprocessor communicates with 
-
-% TODO: Explain AXI4
-The AXI4 protocol is designed by ARM, and is royalty-free, where a licence is
-not required for academic or commercial use.
+A microprocessor communicates with memory and other peripherals through a bus.
+The AXI4 bus protocol is designed by ARM, and is royalty-free, where a licence
+is not required for academic or commercial use.
 
 % https://forums.xilinx.com/t5/Design-and-Debug-Techniques-Blog/AXI-Basics-1-Introduction-to-AXI/ba-p/1053914 
 
@@ -1155,82 +1187,37 @@ not required for academic or commercial use.
 % 35 wires in total, excluding clock & reset
 
 Due to the inherent complexity of the AXI4 protocol, large combinatorial finite
-state machines are required to ensure the read and write requests of the AXI4
-bus are processed correctly.
+state machines are typically required to ensure the read and write requests of
+the AXI4 bus are processed correctly.
 The state of over a dozen wires needs to be considered by the programmer on
 every clock cycle. Developing a peripheral in this manner in standard Verilog
 RTL is a challenging feat.
 
 Moreover, when a peripheral for the module is initialised, all 35 wires
 corresponding to signals in the AXI4 protocol need to be connected to the AXI4
-interconnect. All of these connections need to be manually specified. This can
-be observed in Verilog RTL as follows:
-\tiny
+interconnect. All of these connections need to be manually specified, as
+previously shown in Figure \ref{fig:uart_wires}. Bluespec Verilog offers a
+significant degree of abstraction when processing AXI4 read and write requests,
+and also when attaching the peripheral to the AXI4 bus interconnect.
+
+\begin{figure}[h]
+  \scriptsize
 \begin{verbatim}
-  mkUART uart0(.CLK(CLK),
-         .RST_N(RST_N),
-         .put_from_console_put(uart0$put_from_console_put),
-         .set_addr_map_addr_base(uart0$set_addr_map_addr_base),
-         .set_addr_map_addr_lim(uart0$set_addr_map_addr_lim),
-         .slave_araddr(uart0$slave_araddr),
-         .slave_arburst(uart0$slave_arburst),
-         .slave_arcache(uart0$slave_arcache),
-         .slave_arid(uart0$slave_arid),
-         .slave_arlen(uart0$slave_arlen),
-         .slave_arlock(uart0$slave_arlock),
-         .slave_arprot(uart0$slave_arprot),
-         .slave_arqos(uart0$slave_arqos),
-         .slave_arregion(uart0$slave_arregion),
-         .slave_arsize(uart0$slave_arsize),
-         .slave_arvalid(uart0$slave_arvalid),
-         .slave_awaddr(uart0$slave_awaddr),
-         .slave_awburst(uart0$slave_awburst),
-         .slave_awcache(uart0$slave_awcache),
-         .slave_awid(uart0$slave_awid),
-         .slave_awlen(uart0$slave_awlen),
-         .slave_awlock(uart0$slave_awlock),
-         .slave_awprot(uart0$slave_awprot),
-         .slave_awqos(uart0$slave_awqos),
-         .slave_awregion(uart0$slave_awregion),
-         .slave_awsize(uart0$slave_awsize),
-         .slave_awvalid(uart0$slave_awvalid),
-         .slave_bready(uart0$slave_bready),
-         .slave_rready(uart0$slave_rready),
-         .slave_wdata(uart0$slave_wdata),
-         .slave_wlast(uart0$slave_wlast),
-         .slave_wstrb(uart0$slave_wstrb),
-         .slave_wvalid(uart0$slave_wvalid),
-         .EN_server_reset_request_put(uart0$EN_server_reset_request_put),
-         .EN_server_reset_response_get(uart0$EN_server_reset_response_get),
-         .EN_set_addr_map(uart0$EN_set_addr_map),
-         .EN_get_to_console_get(uart0$EN_get_to_console_get),
-         .EN_put_from_console_put(uart0$EN_put_from_console_put),
-         .RDY_server_reset_request_put(uart0$RDY_server_reset_request_put),
-         .RDY_server_reset_response_get(uart0$RDY_server_reset_response_get),
-         .RDY_set_addr_map(),
-         .slave_awready(uart0$slave_awready),
-         .slave_wready(uart0$slave_wready),
-         .slave_bvalid(uart0$slave_bvalid),
-         .slave_bid(uart0$slave_bid),
-         .slave_bresp(uart0$slave_bresp),
-         .slave_arready(uart0$slave_arready),
-         .slave_rvalid(uart0$slave_rvalid),
-         .slave_rid(uart0$slave_rid),
-         .slave_rdata(uart0$slave_rdata),
-         .slave_rresp(uart0$slave_rresp),
-         .slave_rlast(uart0$slave_rlast),
-         .get_to_console_get(uart0$get_to_console_get),
-         .RDY_get_to_console_get(uart0$RDY_get_to_console_get),
-         .RDY_put_from_console_put(uart0$RDY_put_from_console_put),
-         .intr(uart0$intr));
+   Fabric_AXI4_IFC  fabric <- mkFabric_AXI4;
+   Core_IFC #(N_External_Interrupt_Sources)  core <- mkCore;
+   UART_IFC   uart0  <- mkUART;
+   Test_IFC   test <- mkTest;
+   mkConnection (core.cpu_imem_master,  fabric.v_from_masters [imem_master_num]); // instruction memory
+   mkConnection (core.cpu_dmem_master,  fabric.v_from_masters [dmem_master_num]); // data memory
+   mkConnection (fabric.v_to_slaves [uart0_slave_num],  uart0.slave); // UART0 serial peripheral
+   mkConnection (fabric.v_to_slaves [test_slave_num],  test.slave); // Test peripheral
+   // Connect to BlockRAM
 \end{verbatim}
-\normalsize
+  \normalsize
+  \caption{Connecting a UART peripheral to the AXI4 bus within BSV}
+\end{figure}
 
-Bluespec Verilog offers a significant degree of abstraction when processing AXI4
-read and write requests, and also when attaching the peripheral to the AXI4 bus interconnect.
-% TODO: Include code!
 
-% TODO: Include picture of Vivado SoC
 Proprietary CAD tools, such as Xilinx Vivado, typically have a built-in block
 design tool. The built in design tool allows the developer to see the SoC as a
 whole, and visually connect components together. These design tools generate the
@@ -1243,7 +1230,6 @@ and block memory controller. The block design tools created by Xilinx and Altera
 are a solution to the mess of specifying wires and connections when writing
 standard Verilog HDL in a modular fashion. The design may be then simulated
 directly using the xsim command within Xilinx Vivado.
-% TODO: talk about why we avoid this (proprietary IP bugs)
 
 In contrast, our testbench SoC written in Bluespec Verilog has no graphical
 configuration. The entire network consisting of the processor core, peripherals
@@ -1255,23 +1241,8 @@ An instance of \texttt{mkConnection} exists for the AXI4 master and slave
 interfaces that are also implemented in BSV themselves. The AXI4 fabric module
 is the interconnect, and is parametised by the number of master and slave
 interfaces it should have. Each instance of \texttt{mkConnection} is a module
-that forwards data between all 35 AXI4 wires. As shown below:
-% TODO: Add SoCMap/SoCTop
-\scriptsize
-\begin{verbatim}
-   Fabric_AXI4_IFC  fabric <- mkFabric_AXI4;
-   Core_IFC #(N_External_Interrupt_Sources)  core <- mkCore;
-   UART_IFC   uart0  <- mkUART;
-   Test_IFC   test <- mkTest;
-   mkConnection (core.cpu_imem_master,  fabric.v_from_masters [imem_master_num]); // instruction memory
-   mkConnection (core.cpu_dmem_master,  fabric.v_from_masters [dmem_master_num]); // data memory
-   mkConnection (fabric.v_to_slaves [uart0_slave_num],  uart0.slave); // UART0 serial peripheral
-   mkConnection (fabric.v_to_slaves [test_slave_num],  test.slave); // Test peripheral
-   // Connect to BlockRAM
-\end{verbatim}
-\normalsize
-
-% TODO: Perhaps include example AXI4 r/w
+that forwards data between all 35 AXI4 wires.
+\clearpage
 
 \subsubsection{AXI4 Alignment/Padding}
 Due to the structure of the AXI4 bus and the way a processor writes to memory,
@@ -1283,12 +1254,17 @@ writing/reading from memory when crossing the block boundary.
 % TODO: Include image
 For example, writing to an unaligned 4-byte region at the address $0x2-0x6$ crosses
 the $0x4$ boundary:
-\begin{verbatim}
+\begin{figure}[h]
+  \centering
+\scriptsize
+\begin{BVerbatim}
 *((uint32_t*)0xC0001002) = 0x1337;
 Trap_Info { epc: 'h800022d6, exc_code: 'h6, tval: 'hc0001002 }
 TRAP EXC: STORE_AMO_ADDR_MISALIGNED
 *((uint32_t*)0xC0001000) = 0x1337;
-\end{verbatim}
+\end{BVerbatim}
+  \caption{Demonstration of an AXI4 write trap and success.}
+\end{figure}
 
 This is vital to keep in mind throughout writing to peripheral memory. An
 integer must be aligned to 4 bytes, a short to 2 bytes, and a char to the
@@ -1328,6 +1304,7 @@ We modify the existing Piccolo testbench program to output the clock rate when
 the testbench is receives an interrupt signal, or when the simulation has come
 to an end. This is done as follows, we keep track of the time throughout our
 simulation and divide the number of simulated cycles by the time elapsed.
+\begin{figure}[h]
 \begin{lstlisting}[language=C,style=customc]
 using namespace std;
 using namespace std::chrono;
@@ -1359,6 +1336,8 @@ int main (int argc, char **argv, char **env) {
     return 0;
 }
 \end{lstlisting}
+\caption{Modifications to the standard Verilator testbench to output the clock rate.}
+\end{figure}
 
 
 \subsection{Results}
@@ -1378,7 +1357,7 @@ busy bit is set, we double the array and unset the busy bit. This allows the
 firmware to stall until the busy bit is unset, and the computation has been
 completed.
 
-% NOTE: Firmware C code for accelerator
+\begin{figure}[h]
 \begin{lstlisting}[language=C,style=customc]
 #define TEST_CONTROL_ADDR 0xC0001000UL
 #define TEST_DATA_ADDR 0xC0001008UL
@@ -1403,12 +1382,16 @@ void main() {
   }
 }
 \end{lstlisting}
-
+\caption{The firmware for communicating with the AXI4 Test Peripheral.}
+\end{figure}
 
 \subsection{Results}
 % NOTE: Console log
-\small
-\begin{verbatim}
+
+\begin{figure}[h]
+\centering
+  \small
+\begin{BVerbatim}
 0: 0
 1: 1
 2: 2
@@ -1420,8 +1403,10 @@ Stall complete!
 1: 2
 2: 4
 3: 6
-\end{verbatim}
+\end{BVerbatim}
 \normalsize
+\caption{Simulation output of our verilator testbench for our minimal SoC.}
+\end{figure}
 
 We successfully write numbers to our accelerator memory and double them all in a
 single clock cycle by issuing a command to our accelerator. Now that we have
@@ -1711,7 +1696,7 @@ implementation of this is shown below: \\
 
 \begin{figure}[h]
   \centering 
-\tiny
+\scriptsize
 \begin{verbatim}
 import GetPut :: *;
 import ClientServer :: *;
@@ -1837,14 +1822,14 @@ more hardware-intensive strategy that makes use of pipelining for both the
 multiplication and accumulation steps.
 
 As before, in our first stage, we perform pipelined multiplication of our
-elements into a buffer. As before, this will take $11+N$ cycles
+elements into a buffer. This will take $11+N$ cycles.
 
 We then perform reductive pairwise addition of the elements in the buffer.
 The pairwise addition procedure has the advantage that we may fully occupy the
-FP Adder pipeline. We then perform pipelined addition of pairs of elements.
+FP Adder pipeline when iterating through pairs of elements.
 It should take $\log_2{N}$ reductive steps, where each step consumes
-$6+\frac{N_{i}}{2}$ cycles, where the constant term is the cost of flushing the
-addition pipeline.
+$6+\frac{N_{i}}{2}$ cycles, the sum of the cost of flushing the
+addition pipeline and pairwise adding all elements in our internal buffer.
 
 \begin{align*}
   T &= 6\log_2{N} + \left(\frac{N}{2} + \frac{N}{4} + ... + 1\right) + \text{const.}\\
@@ -1865,7 +1850,7 @@ representations.
 
 After each pass, we extract a remainer if it exists, then bitshift $N_i$. At
 most, the binary representation of the number of elements in our input vector is
-the number of 1s in the binary representation of our input vector $B$. Therefore, there will
+the number of 1s in the binary representation of our input vector $N$. Therefore, there will
 be a maximum of $\log_{2}{N}$ remainder values to place in a seperate buffer and
 accumulate. The accumulation process will therefore take at most $6\log_{2}{N}$ cycles.
 
@@ -1897,9 +1882,9 @@ constant term.
 
 \subsection{Multiple Functional Units \& Multi-ported memory}
 We observe that the rate at which we issue instructions to the accelerator
-exceeds the compute speed of the functional unit. Crucially, our firmware stalls
+exceeds the compute speed of an individual functional unit. Crucially, our firmware stalls
 its execution and waits for the accelerator to complete its task before issuing
-a new instruction. Thus, we are compute-bound.
+a new instruction. In this circumstance, we are compute-bound.
 
 We seek to exploit the parallelism offered in hardware design by duplicating our
 functional units, sequentially issuing commands to different functional units
@@ -2257,24 +2242,24 @@ We may have seperate regions of preloaded commands, and store only the start
 addresses. As a consequence we need only set the program counter and mark
 execution to perform an entire matrix multiplication.
 
-
-% Very high savings --- best for small matrices, --- 32~ elements
-% TODO: Fix scheduling conflicts.
-
-
-
-
-% TODO: UNKNOWN TIMINGS?:
-% TODO: Cycle count / byte read in IO memory (when bypassing the cache!?)
-% TODO: CACHE R/W speed!?
-We attempt more extreme measures
-% TODO: Accelerator buffer/program counter. (Internal stack)
+One of the principal issues encountered during development was infinite stalling
+due to conflicts between BSV rules. The rule which decodes an
+instruction reads from and writes to the \texttt{server\_busy} vector of
+registers. The rule which writes the result of a functional unit computation to
+memory also reads from and writes to the \texttt{server\_busy} vector in the
+same cycle. As a result, while the execution of an instruction is stalling
+within hardware (as opposed to firmware), the conflicting rule that actually
+writes into memory and marks the computation as complete does not fire. We have
+experimented with using \texttt{FIFOs}, and \texttt{CReg} concurrent registers
+to avoid this sort of rule conflict to no avail. Further time must be spent on
+this technique.
 
 \section{Firmware Stalling/Interrupts}
 One of the potential criticisms of the technique of constantly polling a region
-of memory is that
+of memory is that hardware interrupts were designed for the very purpose of
+removing the need for this to happen.
 
-% TODO: Cite this
+% TODO: Cite this: https://community.arm.com/developer/ip-products/processors/b/processors-ip-blog/posts/beginner-guide-on-interrupt-latency-and-interrupt-latency-of-the-arm-cortex-m-processors 
 On an ARM system, the hardware interrupt latency is $\approx 12$ cycles. On a
 Risc-V system, interrupt behavior is exceedingly complicated. A Risc-V processor
 has, by default, a memory-mapped peripheral known as a Platform Level Interrupt
@@ -2282,7 +2267,6 @@ Controller (PLIC). The PLIC is responsible for multiplexing multiple interrupt
 requests of different priorities. While the PLIC registers interrupts and stores
 the necessary information for prioritising them, it is the role of the firmware
 to actually perform an associated task when an interrupt occurs.
-
 
 % TODO: Cite: https://sifive.cdn.prismic.io/sifive/0d163928-2128-42be-a75a-464df65e04e0_sifive-interrupt-cookbook.pdf 
 From the SiFive interrupt cookbook, we see:
@@ -2310,12 +2294,6 @@ of moving the variables in all of our registers into the stack when the
 interrupt function is called. Crucially, we observe that the associated latency
 of processing interrupts greatly supercedes that of looping and polling a region
 of memory to determine whether an operation within the accelerator has completed.
-
-
-\subsection{Other ideas}
-% TODO: Why did we ignore interrupts. PLIC IS SLOW
-% TODO: 64-bit bus
-
 
 \section{Instruction jumping}
 One of the more novel ideas for getting a marginal speed-up in issuing commands
@@ -2385,23 +2363,11 @@ appropriately, the offset may be inexpensively obtained through a typecast
 (\texttt{0xC0002900 (4B) -> 0x2900 (2B)}). This would reduce the size of our
 instructions by 6 bytes.
 
-% TODO: explain more
+With more time, the monolithic approach could be pursued where the
+instructions to compute each element in our final matrix are generated and
+scheduled automatically within our hardware. This would perform the same
+speed-up as hardware buffering, and would avoid the associated memory cost.
 
-% Analysis of struct packing
-% Attribute ((packed))
-% uint8_t offset <-- redundant (-3 bytes)
-% uint8_t unit <-- push to accelerator
-
-% uintptr_t <-- Make ADDR 16 bits!?, subtract base address (64KB accel memory...) ()
-% (-3*2=-6 bytes)
-% 0xC0002900 --> 32 bits
-% 2900 --> 16 bits
-% 1000 (16-bit base address)
-% 1900
-% 6 bytes ~=? 6 cycles saved
-% 2-4 cycles/base address subtraction
-% ALIGN: ACCEL @ 16-bit base address boundary
-% Therefore 0-cost LE typecast <---> address calculation! (SMART)
 \subsection{Memory Striping}
 One of the big problems with our accelerator is the design of the multi-ported
 memory. By duplicating our memory writes across $n$ channels for $n-1$
@@ -2445,18 +2411,28 @@ instructions to our co-processor and we contemplate ways of increasing this.
 
 \section{Conclusions}
 We have verified the feasibility of our design through synthesis and
-demonstrated the advantages through simulations.
+demonstrated the performance advantages through simulations.
 
+% TODO: Cite SSE (UP TOP)
+We struggle to provide an associated Risc-V vector ISA benchmark within our
+simulations as it has not yet been ratified, however we may anticipate a 2-4
+fold increase in computation speed for matrix multiplication. The common SSE
+instructions on x86 systems can compute 4 values per cycle, so a 2-4 fold cycle
+count reduction would be expected of the vector ISA for it to be competitive.
+We observe that in our earlier sections, we observe at most a 4 fold performance
+increase when multiplying large matrices. With this information we suspect that
+a vector ISA extension be equally performant. Alternatively, it could be argued
+that our accelerator is significantly simpler than modifying the internals of a
+CPU to implement an unratified vector ISA, and the interopability associated
+with an AXI4 peripheral would allow our accelerator to interface with any
+processor.
 
-% BlockRAM limitations
 The design structure of the peripheral makes it simple to add additional
 functionality. The structure may be replaced by a tagged union and different
 operations may be decoded. For instance: if we want to accelerate neural network
 inference, we may pass commands that apply activation functions to large vectors
 of data. By sharing the same region of memory within the peripheral, there is no
 data movement overhead. 
-
-
 
 % TODO: FPGA resources occupancy --- blockRAM saturates quickly (In particular)
 One of the shortcomings associated with the use of Bluespec Verilog observed
@@ -2466,15 +2442,31 @@ memory across multiple channels and the parameterisation of many modules, small
 changes in configuration or constants may have a impact on generated hardware
 that is not intuitive to the designer despite providing more flexibility.
 
+We underestimated our predicted cycle counts for our pipelined functional units
+by $2N$. This is partly because cycles were wasted while the FSM was changing
+state. There may also be an additional overhead where a server request cannot be
+given to a floating point unit at the same cycle a response is received.
+Crucially, despite the fact that Bluespec offers superior scheduling support,
+the only way to accurately determine the cycle counts of performing operations
+with our hardware is through \texttt{\$display(...)} statements within
+simulations. It is therefore difficult to strictly adhere to strict timing
+requirements when designing hardware.
+
 While we succeeded in performing synthesis with our minimal SoC system, one of
 the principal shortcomings were the problems encountered in performing synthesis
-with our peripheral.
+with our accelerator as opposed to the rest of our SoC. While open source tools
+were used in the development process and for simulations, we must still use the
+proprietary tools for synthesis, and the format of generated RTL for an AXI4
+peripheral written in BSV is fundamentally incompatible with the Xilinx Vivado
+block design tool.
 
-While open source tools were used in the development process and for
-simulations, we must still use the proprietary tools for synthesis.
-
-The proprietary tools 
-
+In retrospect, for the purpose of generating bitstreams and performing place and
+route algorithms, it was unwise to seperate the development process from
+the computer aided design tools (Xilinx Vivado). The process of synthesis and
+SoC design are very strongly coupled to each other, and both should ideally be
+simulated and synthesised on the same CAD platform. This can be seen with the
+Freedom E310 SoC built using the Rocket processor, where the build tools
+themselves invoke Xilinx Vivado through commandline scripts.
 
 
 % NOTE: Clearly present argument and demonstrate that success criteria were
